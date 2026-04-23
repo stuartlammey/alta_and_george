@@ -377,8 +377,8 @@ function update() {
     bx+=vx; by+=vy;
 
     // Horizontal wrap within game area
-    if (bx<-ENV_HW)        bx=GAME_W+ENV_HW;
-    if (bx>GAME_W+ENV_HW)  bx=-ENV_HW;
+    if (bx-ENV_HW < 0)       { bx=ENV_HW;        vx= Math.abs(vx)*BOUNCE_E; }
+    if (bx+ENV_HW > GAME_W)  { bx=GAME_W-ENV_HW; vx=-Math.abs(vx)*BOUNCE_E; }
 
     // Soft floor
     const floor=WORLD_H-80;
@@ -499,8 +499,14 @@ function startGame() {
 // ════════════════════════ INPUT ════════════════════════
 window.addEventListener('mousemove',  e=>{mx=e.clientX;my=e.clientY;});
 window.addEventListener('mouseleave',()=>{mx=my=-9999;});
-window.addEventListener('touchstart',e=>{e.preventDefault();mx=e.touches[0].clientX;my=e.touches[0].clientY;},{passive:false});
-window.addEventListener('touchmove', e=>{e.preventDefault();mx=e.touches[0].clientX;my=e.touches[0].clientY;},{passive:false});
+window.addEventListener('touchstart',e=>{
+    if(e.target.closest('button')) return; // let buttons handle their own taps
+    e.preventDefault(); mx=e.touches[0].clientX; my=e.touches[0].clientY;
+},{passive:false});
+window.addEventListener('touchmove',e=>{
+    if(e.target.closest('button')) return;
+    e.preventDefault(); mx=e.touches[0].clientX; my=e.touches[0].clientY;
+},{passive:false});
 window.addEventListener('touchend',   ()=>{mx=my=-9999;});
 window.addEventListener('touchcancel',()=>{mx=my=-9999;});
 document.getElementById('start-btn').addEventListener('click',startGame);
