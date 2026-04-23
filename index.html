@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alta &amp; George: Skyward</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(175deg, #2e7dc4 0%, #5ba4e5 25%, #87ceeb 60%, #c8e8f7 100%);
+            cursor: crosshair;
+        }
+
+        #scene {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cloud {
+            position: absolute;
+            pointer-events: none;
+            filter: drop-shadow(0 10px 20px rgba(0, 50, 120, 0.18));
+        }
+
+        #balloon-wrap {
+            position: absolute;
+            width: 200px;
+            height: 280px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            will-change: left, top, transform;
+            filter: drop-shadow(0 14px 28px rgba(0, 40, 100, 0.3));
+        }
+
+        .title {
+            position: fixed;
+            top: 22px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.95);
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 2.2rem;
+            font-style: italic;
+            text-shadow: 0 2px 20px rgba(0, 60, 140, 0.45);
+            pointer-events: none;
+            z-index: 20;
+            letter-spacing: 0.08em;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+<div id="scene">
+    <h1 class="title">Alta &amp; George: Skyward</h1>
+    <div id="clouds"></div>
+
+    <div id="balloon-wrap">
+        <!--
+            BALLOON SVG
+            Replace the emoji placeholders below with <image> tags once you have photos:
+              Alta  → <image href="images/alta.png" x="55" y="196" width="40" height="52" clip-path="..."/>
+              George → <image href="images/george.png" x="105" y="198" width="38" height="50" clip-path="..."/>
+        -->
+        <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+
+            <!-- Envelope shadow -->
+            <ellipse cx="103" cy="112" rx="72" ry="76" fill="rgba(0,0,0,0.10)"/>
+
+            <!-- Main envelope: teardrop shape -->
+            <path d="M100,8
+                     C148,8 178,44 178,92
+                     C178,140 148,170 100,178
+                     C52,170 22,140 22,92
+                     C22,44 52,8 100,8 Z"
+                  fill="#FF6B6B" stroke="#d94f4f" stroke-width="1.5"/>
+
+            <!-- Warm yellow stripe -->
+            <path d="M100,8
+                     C124,32 134,68 131,115
+                     C129,148 118,168 100,178
+                     C82,168 71,148 69,115
+                     C66,68 76,32 100,8 Z"
+                  fill="#FFD93D" opacity="0.9"/>
+
+            <!-- Centre stripe (red again, creates tri-panel look) -->
+            <path d="M100,8
+                     C108,34 110,70 109,118
+                     C108,150 106,167 100,178
+                     C94,167 92,150 91,118
+                     C90,70 92,34 100,8 Z"
+                  fill="#FF6B6B" opacity="0.75"/>
+
+            <!-- Envelope highlight -->
+            <ellipse cx="70" cy="68" rx="16" ry="26"
+                     fill="white" opacity="0.20"
+                     transform="rotate(-18,70,68)"/>
+
+            <!-- Ropes -->
+            <line x1="52"  y1="172" x2="63"  y2="204" stroke="#7a5c10" stroke-width="1.5"/>
+            <line x1="74"  y1="177" x2="72"  y2="204" stroke="#7a5c10" stroke-width="1.5"/>
+            <line x1="100" y1="178" x2="100" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
+            <line x1="126" y1="177" x2="128" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
+            <line x1="148" y1="172" x2="137" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
+
+            <!-- Basket body -->
+            <path d="M60,202 Q60,198 64,198 L136,198 Q140,198 140,202 L140,248
+                     Q140,253 136,253 L64,253 Q60,253 60,248 Z"
+                  fill="#c8a565" stroke="#7a5c10" stroke-width="2"/>
+
+            <!-- Basket top rim -->
+            <rect x="58" y="196" width="84" height="8" rx="3"
+                  fill="#a87c3a" stroke="#7a5c10" stroke-width="1.5"/>
+
+            <!-- Basket weave lines -->
+            <line x1="80"  y1="204" x2="80"  y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
+            <line x1="100" y1="204" x2="100" y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
+            <line x1="120" y1="204" x2="120" y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
+            <line x1="60"  y1="220" x2="140" y2="220" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
+            <line x1="60"  y1="236" x2="140" y2="236" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
+
+            <!-- Alta (Samoyed) placeholder — swap for <image> when photo is ready -->
+            <circle cx="79" cy="227" r="18" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+            <text x="79" y="233" text-anchor="middle" font-size="20">🐕</text>
+
+            <!-- George (baby) placeholder — swap for <image> when photo is ready -->
+            <circle cx="121" cy="229" r="16" fill="#ffe4c4" stroke="#deb887" stroke-width="1"/>
+            <text x="121" y="235" text-anchor="middle" font-size="18">👶</text>
+
+        </svg>
+    </div>
+</div>
+
+<script>
+    // ─────────────────────────────────────────────
+    //  CONFIG
+    // ─────────────────────────────────────────────
+    const FUR_SRC = 'images/alta-fur.jpg';   // drop Alta's fur close-up here
+
+    // Cloud definitions: position (vw/vh %) + SVG circle clusters
+    const CLOUD_DEFS = [
+        { x:  4, y:  7, w: 250, h: 135,
+          circles: [{cx:65,cy:90,r:58},{cx:120,cy:62,r:52},{cx:185,cy:84,r:55},{cx:105,cy:100,r:46}] },
+
+        { x: 66, y:  5, w: 210, h: 115,
+          circles: [{cx:55,cy:76,r:46},{cx:108,cy:52,r:50},{cx:162,cy:72,r:44}] },
+
+        { x: 38, y: 60, w: 190, h: 106,
+          circles: [{cx:52,cy:70,r:42},{cx:98,cy:46,r:46},{cx:146,cy:66,r:40}] },
+
+        { x:  0, y: 52, w: 230, h: 124,
+          circles: [{cx:62,cy:82,r:54},{cx:116,cy:58,r:50},{cx:170,cy:78,r:48}] },
+
+        { x: 74, y: 58, w: 200, h: 112,
+          circles: [{cx:54,cy:74,r:48},{cx:104,cy:50,r:46},{cx:154,cy:70,r:48}] },
+
+        { x: 28, y: 18, w: 170, h:  96,
+          circles: [{cx:46,cy:62,r:38},{cx:90,cy:42,r:40},{cx:130,cy:60,r:38}] },
+    ];
+
+    // ─────────────────────────────────────────────
+    //  BUILD CLOUDS
+    // ─────────────────────────────────────────────
+    function buildCloud(def, idx) {
+        const { w, h, circles } = def;
+        const clipId = `cc${idx}`;
+        const bottomY = Math.max(...circles.map(c => c.cy));
+        const circleMarkup = circles
+            .map(c => `<circle cx="${c.cx}" cy="${c.cy}" r="${c.r}"/>`)
+            .join('');
+
+        return `<svg xmlns="http://www.w3.org/2000/svg"
+                     width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs>
+    <clipPath id="${clipId}">
+      ${circleMarkup}
+      <rect x="0" y="${bottomY}" width="${w}" height="${h - bottomY + 2}"/>
+    </clipPath>
+  </defs>
+  <image href="${FUR_SRC}" x="0" y="0" width="${w}" height="${h}"
+         clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="0" y="0" width="${w}" height="${h}"
+        fill="white" opacity="0.50" clip-path="url(#${clipId})"/>
+</svg>`;
+    }
+
+    const cloudsContainer = document.getElementById('clouds');
+    const cloudEls = [];
+
+    CLOUD_DEFS.forEach((def, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'cloud';
+        wrap.style.cssText = `position:absolute; left:${def.x}vw; top:${def.y}vh;`;
+        wrap.innerHTML = buildCloud(def, i);
+        cloudsContainer.appendChild(wrap);
+        cloudEls.push(wrap);
+    });
+
+    // ─────────────────────────────────────────────
+    //  BALLOON PHYSICS
+    // ─────────────────────────────────────────────
+    const balloonWrap = document.getElementById('balloon-wrap');
+
+    let bx = window.innerWidth  / 2;
+    let by = window.innerHeight / 2;
+    let vx = 0;
+    let vy = 0;
+    let mx = -9999;
+    let my = -9999;
+    let tick = 0;
+
+    const REPEL_RADIUS = 320;    // px — how far the magnet field reaches
+    const REPEL_FORCE  = 22000;  // strength constant
+    const DAMPING      = 0.87;   // velocity decay per frame
+    const BOUNCE_DAMP  = 0.42;   // energy kept on wall bounce
+    const MARGIN       = 55;     // px from viewport edge
+
+    window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+    // Gentle return to centre when mouse leaves
+    window.addEventListener('mouseleave', () => { mx = -9999; my = -9999; });
+
+    function frame() {
+        tick++;
+
+        const dx   = bx - mx;
+        const dy   = by - my;
+        const dist = Math.hypot(dx, dy) || 0.001;
+
+        // Repulsion force (inverse-square, capped at close range)
+        if (dist < REPEL_RADIUS) {
+            const f = REPEL_FORCE / Math.max(dist * dist, 2500);
+            vx += (dx / dist) * f;
+            vy += (dy / dist) * f;
+        }
+
+        // Idle float: two slow sinusoids so it never fully stops
+        vx += Math.sin(tick * 0.00085) * 0.06;
+        vy += Math.sin(tick * 0.00110 + 1.2) * 0.09;
+
+        vx *= DAMPING;
+        vy *= DAMPING;
+
+        bx += vx;
+        by += vy;
+
+        // Soft boundary
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        if (bx < MARGIN)     { bx = MARGIN;     vx =  Math.abs(vx) * BOUNCE_DAMP; }
+        if (bx > W - MARGIN) { bx = W - MARGIN; vx = -Math.abs(vx) * BOUNCE_DAMP; }
+        if (by < MARGIN)     { by = MARGIN;      vy =  Math.abs(vy) * BOUNCE_DAMP; }
+        if (by > H - MARGIN) { by = H - MARGIN;  vy = -Math.abs(vy) * BOUNCE_DAMP; }
+
+        // Gentle tilt based on horizontal velocity
+        const tilt = Math.min(Math.max(vx * 1.8, -14), 14);
+        balloonWrap.style.left      = bx + 'px';
+        balloonWrap.style.top       = by + 'px';
+        balloonWrap.style.transform = `translate(-50%, -50%) rotate(${tilt}deg)`;
+
+        // Subtle cloud parallax (each layer at slightly different depth)
+        const sceneX = (bx - W / 2) / W;
+        const sceneY = (by - H / 2) / H;
+        cloudEls.forEach((el, i) => {
+            const pf = 0.018 + i * 0.007;
+            const ox = sceneX * pf * W;
+            const oy = sceneY * pf * H;
+            el.style.transform = `translate(${ox}px, ${oy}px)`;
+        });
+
+        requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+</script>
+</body>
+</html>
