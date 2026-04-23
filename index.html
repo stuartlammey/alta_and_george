@@ -219,18 +219,22 @@ function initGame() {
 
 // ════════════════════════ GENERATION ════════════════════════
 const CLOUD_TEMPLATES = [
-    // Classic 4-bump
-    [{cx:55,cy:60,r:44},{cx:108,cy:36,r:42},{cx:162,cy:54,r:46},{cx:92,cy:72,r:35}],
-    // Wide 5-bump
-    [{cx:35,cy:58,r:36},{cx:85,cy:38,r:44},{cx:140,cy:44,r:42},{cx:188,cy:56,r:35},{cx:110,cy:68,r:28}],
-    // Tall puff
-    [{cx:60,cy:72,r:52},{cx:105,cy:38,r:50},{cx:150,cy:66,r:48},{cx:105,cy:92,r:38}],
-    // Small 3-bump
-    [{cx:38,cy:48,r:32},{cx:80,cy:28,r:38},{cx:122,cy:44,r:34}],
-    // Long low strip
-    [{cx:28,cy:52,r:34},{cx:78,cy:40,r:40},{cx:130,cy:36,r:42},{cx:178,cy:46,r:36},{cx:210,cy:54,r:28}],
-    // Fat single-puff
-    [{cx:72,cy:64,r:58},{cx:120,cy:42,r:52},{cx:160,cy:60,r:50}],
+    // Fluffy round — overlapping domes, wide and billowy
+    [
+        {cx:50, cy:74,r:42},{cx:100,cy:46,r:52},{cx:158,cy:40,r:56},
+        {cx:212,cy:58,r:44},{cx:242,cy:78,r:30},{cx:130,cy:90,r:36},
+    ],
+    // Tall cumulonimbus — wide base, rising column, single peaked dome
+    [
+        {cx:88, cy:112,r:44},{cx:142,cy:110,r:42},
+        {cx:68, cy:70, r:38},{cx:115,cy:52, r:48},{cx:162,cy:68,r:40},
+        {cx:112,cy:18, r:44},
+    ],
+    // Long wispy — elongated streak, narrows at the trailing end
+    [
+        {cx:18, cy:52,r:26},{cx:62, cy:36,r:34},{cx:110,cy:28,r:40},
+        {cx:158,cy:32,r:36},{cx:200,cy:42,r:30},{cx:234,cy:52,r:22},
+    ],
 ];
 
 function generateClouds() {
@@ -494,11 +498,11 @@ function update() {
     // Nappy drop at halfway — jettison dead weight, unlock 50% boost
     if (!nappyDropped && by < WORLD_H / 2) {
         nappyDropped = true; nappyActive = true; boostActive = true;
-        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 1;
+        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 0.5;
         nappyBannerTimer = 180;
     }
     if (nappyActive) {
-        nappyVy += 0.22;
+        nappyVy += 0.11;
         nappyWorldY += nappyVy;
         if (nappyWorldY > camTop + H + 120) nappyActive = false;
     }
