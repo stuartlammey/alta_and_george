@@ -43,7 +43,7 @@
         }
         .screen p {
             font-family:Georgia,serif; color:rgba(255,255,255,.92);
-            font-size:clamp(.82rem,2.8vw,1.05rem);
+            font-size:clamp(.85rem,2.8vw,1.05rem);
             text-align:center; max-width:300px; margin-bottom:6px;
             text-shadow:0 2px 8px rgba(0,40,120,.5); line-height:1.5;
         }
@@ -57,7 +57,6 @@
         .btn:active { background:#fff; transform:scale(.97); }
         .prizes { font-size:3.5rem; margin:14px 0; letter-spacing:18px; }
         #start-screen { background:rgba(20,70,160,.42); }
-        #dead-screen  { background:rgba(10,10,45,.58); }
         #win-screen   { background:rgba(20,70,160,.52); }
         .hidden { display:none!important; }
     </style>
@@ -71,15 +70,11 @@
     <div id="start-screen" class="screen">
         <h1>Alta &amp; George: Skyward</h1>
         <p>Guide the balloon to the top of the sky!</p>
-        <p>Move your mouse (or drag a finger) near the balloon — it floats away like a magnet.</p>
-        <p>Land on platforms to bounce higher. Don't fall off the bottom!</p>
+        <p>Move your mouse (or drag a finger) close to the balloon — it floats away like a magnet.</p>
+        <p>Position your cursor below the balloon to push it upward. Reach the very top to win!</p>
         <button class="btn" id="start-btn">Launch! 🎈</button>
     </div>
-    <div id="dead-screen" class="screen hidden">
-        <h1>Oh no! 😬</h1>
-        <p id="dead-txt">You reached 0m</p>
-        <button class="btn" id="retry-btn">Try again 🎈</button>
-    </div>
+
     <div id="win-screen" class="screen hidden">
         <h1>You made it! 🎉</h1>
         <p>Alta and George soared to the very top of the sky!</p>
@@ -91,19 +86,19 @@
 
 <script>
 // ═══════════════════════ CONSTANTS ═══════════════════════
-const WORLD_H   = 9000;   // total world height (px, y=0 at top)
-const WIN_Y     = 260;    // win when balloon y < this
-const GRAVITY   = 0.38;
-const BOUNCE_VY = -18;    // upward velocity on platform hit
-const REP_RAD   = 260;    // repulsion radius (px)
-const REP_FORCE = 6000;
-const DAMP_X    = 0.91;
-const DAMP_Y    = 0.94;
-const S         = 0.55;             // balloon SVG scale (200×280 → 110×154)
-const OX        = -100 * S;         // SVG→canvas origin offset X (-55)
-const OY        = -140 * S;         // SVG→canvas origin offset Y (-77)
-const BSKT_BOT  = Math.round(113 * S); // basket bottom from balloon centre (62)
-const ENV_HW    = Math.round(78  * S); // envelope half-width             (43)
+const WORLD_H   = 6000;   // total world height (px, y increases downward)
+const WIN_Y     = 280;    // win when balloon y drops below this world value
+const GRAVITY   = 0.06;   // very gentle — balloon feels floaty
+const REP_RAD   = 300;    // repulsion radius in screen-space px
+const REP_FORCE = 8000;   // repulsion strength
+const DAMPING   = 0.87;   // velocity decay per frame (same as original page)
+const BOUNCE    = 0.42;   // energy kept when hitting world edges
+const MARGIN    = 60;     // px from viewport edges
+const S         = 0.55;   // balloon SVG draw scale
+const OX        = -100 * S;
+const OY        = -140 * S;
+const BSKT_BOT  = Math.round(113 * S); // 62 — basket bottom offset from balloon centre
+const ENV_HW    = Math.round(78  * S); // 43 — envelope half-width
 
 // ═══════════════════════ CANVAS ══════════════════════════
 const canvas = document.getElementById('gc');
@@ -114,59 +109,37 @@ resize();
 window.addEventListener('resize', resize);
 
 // ═══════════════════════ ASSETS ══════════════════════════
-let furImg = null, altaImg = null, georgeImg = null, assetsOk = false;
+let furImg = null, altaImg = null, georgeImg = null;
 function loadAssets() {
     return new Promise(res => {
         let n = 0;
-        const done = () => { if (++n === 3) { assetsOk = true; res(); } };
-        const mk = (src) => { const i = new Image(); i.onload = done; i.onerror = done; i.src = src; return i; };
+        const done = () => { if (++n === 3) res(); };
+        const mk = src => { const i = new Image(); i.onload = done; i.onerror = done; i.src = src; return i; };
         furImg    = mk('images/alta-fur.jpg');
         altaImg   = mk('images/alta.jpg');
         georgeImg = mk('images/george.jpg');
     });
 }
 
-// ═══════════════════════ STATE ═══════════════════════════
+// ═══════════════════════ GAME STATE ══════════════════════
 let state = 'start';
-let bx = 0, by = WORLD_H - 160, vx = 0, vy = 0;
-let camTop = WORLD_H - 600;
-let topScore = 0, tick = 0;
-let platforms = [], bgClouds = [];
+let bx, by, vx, vy, camTop, topScore, bgClouds, tick;
 let mx = -9999, my = -9999;
 
 function initGame() {
-    bx = W / 2; by = WORLD_H - 160; vx = 0; vy = 0;
-    camTop = WORLD_H - H;
-    topScore = 0; tick = 0;
-    generatePlatforms();
+    bx = W / 2;
+    by = WORLD_H - 200;    // start near the bottom
+    vx = 0; vy = 0;
+    camTop = by - H * 0.6; // camera: balloon starts 60% down screen
+    topScore = 0;
+    tick = 0;
     generateClouds();
 }
 
-// ═══════════════════════ GENERATION ══════════════════════
-function generatePlatforms() {
-    platforms = [];
-    platforms.push({ x: W/2 - 90, y: WORLD_H - 100, w: 180, h: 14, type: 'normal' });
-    let y = WORLD_H - 220;
-    while (y > WIN_Y + 80) {
-        const hf = Math.max(0, 1 - y / WORLD_H);
-        const w  = Math.max(52, 110 - hf * 55);
-        const x  = 24 + Math.random() * Math.max(1, W - w - 48);
-        const moving = hf > 0.35 && Math.random() < 0.28;
-        const p = { x, y, w, h: 14, type: moving ? 'moving' : 'normal' };
-        if (moving) {
-            p.speed = 0.9 + Math.random() * 1.4;
-            p.dir = Math.random() < 0.5 ? 1 : -1;
-            p.minX = 24; p.maxX = W - w - 24;
-        }
-        platforms.push(p);
-        y -= 95 + hf * 195 + Math.random() * 55;
-    }
-    platforms.push({ x: W/2 - 110, y: WIN_Y, w: 220, h: 18, type: 'win' });
-}
-
+// ═══════════════════════ CLOUD GENERATION ════════════════
 function generateClouds() {
     bgClouds = [];
-    for (let y = 80; y < WORLD_H; y += 480 + Math.random() * 520) {
+    for (let y = 50; y < WORLD_H; y += 450 + Math.random() * 500) {
         const sc = 0.5 + Math.random() * 0.6;
         bgClouds.push({
             x: Math.random() * Math.max(1, W - 230 * sc), y, sc,
@@ -177,11 +150,10 @@ function generateClouds() {
 }
 
 // ═══════════════════════ DRAWING ═════════════════════════
-
 function drawBackground() {
-    const prog = Math.max(0, Math.min(1, (WORLD_H - by) / (WORLD_H - WIN_Y)));
+    const progress = Math.max(0, Math.min(1, (WORLD_H - by) / (WORLD_H - WIN_Y)));
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    if (prog < 0.6) {
+    if (progress < 0.65) {
         g.addColorStop(0, '#2e7dc4'); g.addColorStop(.45, '#5ba4e5');
         g.addColorStop(.8, '#87ceeb'); g.addColorStop(1, '#c8e8f7');
     } else {
@@ -202,47 +174,28 @@ function drawBgCloud(c) {
     ctx.save(); ctx.clip();
     ctx.drawImage(furImg, 0, 0, c.tw, c.th);
     ctx.fillStyle = 'rgba(255,255,255,0.52)'; ctx.fillRect(0, 0, c.tw, c.th);
-    ctx.restore();
-    ctx.restore();
-}
-
-function drawPlatform(p) {
-    const r = 7;
-    ctx.beginPath();
-    ctx.moveTo(p.x + r, p.y);
-    ctx.arcTo(p.x + p.w, p.y,     p.x + p.w, p.y + r,     r);
-    ctx.arcTo(p.x + p.w, p.y+p.h, p.x+p.w-r, p.y + p.h,   r);
-    ctx.arcTo(p.x,       p.y+p.h, p.x,        p.y+p.h-r,   r);
-    ctx.arcTo(p.x,       p.y,     p.x + r,    p.y,         r);
-    ctx.closePath();
-    if (p.type === 'win') {
-        const g = ctx.createLinearGradient(p.x, p.y, p.x+p.w, p.y);
-        g.addColorStop(0,'#FFD93D'); g.addColorStop(.5,'#fff'); g.addColorStop(1,'#FFD93D');
-        ctx.fillStyle = g;
-    } else if (p.type === 'moving') {
-        ctx.fillStyle = '#f4a261';
-    } else {
-        ctx.fillStyle = '#52b788';
-    }
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.30)';
-    ctx.fillRect(p.x+5, p.y+2, p.w-10, p.h/2);
-    if (p.type === 'win') {
-        ctx.fillStyle = 'rgba(255,220,0,0.9)';
-        ctx.font = 'bold 12px Georgia'; ctx.textAlign = 'center';
-        ctx.fillText('★  GOAL  ★', p.x + p.w/2, p.y - 8);
-    }
+    ctx.restore(); ctx.restore();
 }
 
 function drawWinZone() {
-    if (WIN_Y < camTop - 130 || WIN_Y > camTop + H + 20) return;
-    const g = ctx.createRadialGradient(W/2, WIN_Y-50, 5, W/2, WIN_Y-50, 140);
-    g.addColorStop(0,'rgba(255,215,40,0.42)'); g.addColorStop(1,'rgba(255,215,40,0)');
-    ctx.fillStyle = g; ctx.fillRect(W/2-150, WIN_Y-180, 300, 180);
-    const bounce = 4 * Math.sin(tick * 0.05);
-    ctx.font = `${36 + bounce}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('🍼', W/2 - 46, WIN_Y - 55);
-    ctx.fillText('🦴', W/2 + 46, WIN_Y - 55);
+    if (WIN_Y < camTop - 140 || WIN_Y > camTop + H + 20) return;
+    // Radial glow
+    const g = ctx.createRadialGradient(W/2, WIN_Y - 60, 5, W/2, WIN_Y - 60, 160);
+    g.addColorStop(0,'rgba(255,215,40,0.45)'); g.addColorStop(1,'rgba(255,215,40,0)');
+    ctx.fillStyle = g; ctx.fillRect(W/2-170, WIN_Y-200, 340, 200);
+    // Bouncing prizes
+    const bounce = 5 * Math.sin(tick * 0.05);
+    ctx.font = `${40 + bounce}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('🍼', W/2 - 50, WIN_Y - 70 + bounce);
+    ctx.fillText('🦴', W/2 + 50, WIN_Y - 70 - bounce);
+    // Gold bar / finish line
+    const finGrad = ctx.createLinearGradient(W/2 - 130, 0, W/2 + 130, 0);
+    finGrad.addColorStop(0,'rgba(255,220,0,0)');
+    finGrad.addColorStop(.2,'rgba(255,220,0,0.9)');
+    finGrad.addColorStop(.8,'rgba(255,220,0,0.9)');
+    finGrad.addColorStop(1,'rgba(255,220,0,0)');
+    ctx.fillStyle = finGrad;
+    ctx.fillRect(W/2 - 130, WIN_Y - 4, 260, 8);
 }
 
 function envelopePath() {
@@ -294,21 +247,21 @@ function drawBalloon(cx, cy, tiltRad) {
     ctx.beginPath(); envelopePath(); ctx.clip();
     ctx.save();
     ctx.translate(OX+70*S, OY+68*S); ctx.rotate(-18*Math.PI/180);
-    ctx.beginPath(); ctx.ellipse(0,0,16*S,26*S,0,0,Math.PI*2);
+    ctx.beginPath(); ctx.ellipse(0, 0, 16*S, 26*S, 0, 0, Math.PI*2);
     ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.fill();
     ctx.restore(); ctx.restore();
 
     // Ropes
     ctx.strokeStyle='#7a5c10'; ctx.lineWidth=1.5;
     [[52,172,63,204],[74,177,72,204],[100,178,100,204],[126,177,128,204],[148,172,137,204]]
-    .forEach(([x1,y1,x2,y2])=>{
+    .forEach(([x1,y1,x2,y2]) => {
         ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
     });
 
     // Basket
     const bkX=OX+60*S, bkY=OY+198*S, bkW=80*S, bkH=55*S, bkR=5*S;
     ctx.beginPath();
-    ctx.moveTo(bkX+bkR,bkY); ctx.arcTo(bkX+bkW,bkY,bkX+bkW,bkY+bkR,bkR);
+    ctx.moveTo(bkX+bkR,bkY); ctx.arcTo(bkX+bkW,bkY,   bkX+bkW,bkY+bkR,   bkR);
     ctx.arcTo(bkX+bkW,bkY+bkH,bkX+bkW-bkR,bkY+bkH,bkR);
     ctx.arcTo(bkX,bkY+bkH,bkX,bkY+bkH-bkR,bkR); ctx.arcTo(bkX,bkY,bkX+bkR,bkY,bkR);
     ctx.closePath();
@@ -316,13 +269,12 @@ function drawBalloon(cx, cy, tiltRad) {
     ctx.strokeStyle='#7a5c10'; ctx.lineWidth=2; ctx.stroke();
 
     // Rim
-    ctx.fillStyle='#a87c3a';
-    ctx.fillRect(OX+58*S, OY+196*S, 84*S, 8*S);
+    ctx.fillStyle='#a87c3a'; ctx.fillRect(OX+58*S, OY+196*S, 84*S, 8*S);
 
-    // Weave
+    // Basket weave
     ctx.strokeStyle='rgba(122,92,16,0.4)'; ctx.lineWidth=1;
     [[80,204,80,253],[100,204,100,253],[120,204,120,253],[60,220,140,220],[60,236,140,236]]
-    .forEach(([x1,y1,x2,y2])=>{
+    .forEach(([x1,y1,x2,y2]) => {
         ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
     });
 
@@ -333,21 +285,22 @@ function drawBalloon(cx, cy, tiltRad) {
     ctx.restore();
 }
 
-// ═══════════════════════ UPDATE ═══════════════════════════
+// ═══════════════════════ UPDATE ══════════════════════════
 function update() {
     if (state !== 'playing') return;
     tick++;
 
-    platforms.forEach(p => {
-        if (p.type !== 'moving') return;
-        p.x += p.speed * p.dir;
-        if (p.x <= p.minX || p.x >= p.maxX) p.dir *= -1;
-    });
-
-    const prevBy = by;
+    // Gravity (very gentle)
     vy += GRAVITY;
 
-    const dx = bx - mx, dy = by - my;
+    // Idle float — keeps balloon gently moving when far from pointer
+    vx += Math.sin(tick * 0.00085) * 0.06;
+    vy += Math.sin(tick * 0.00110 + 1.2) * 0.07;
+
+    // Repulsion — IMPORTANT: convert screen mouse coords to world coords
+    const worldMy = my + camTop;   // screen Y → world Y
+    const dx = bx - mx;            // horizontal: screen and world share the same X axis
+    const dy = by - worldMy;
     const dist = Math.hypot(dx, dy) || 0.001;
     if (dist < REP_RAD) {
         const f = REP_FORCE / Math.max(dist * dist, 2500);
@@ -355,27 +308,24 @@ function update() {
         vy += (dy / dist) * f;
     }
 
-    vx *= DAMP_X; vy *= DAMP_Y;
+    vx *= DAMPING; vy *= DAMPING;
     bx += vx; by += vy;
 
-    // Horizontal wrap
+    // Horizontal wrap (reappear on opposite side)
     if (bx < -ENV_HW)    bx = W + ENV_HW;
     if (bx > W + ENV_HW) bx = -ENV_HW;
 
-    // Platform collisions (basket bottom crossing platform top while falling)
-    if (vy > 0) {
-        const bot = by + BSKT_BOT, prevBot = prevBy + BSKT_BOT;
-        for (const p of platforms) {
-            if (prevBot <= p.y && bot >= p.y &&
-                bx + ENV_HW > p.x && bx - ENV_HW < p.x + p.w) {
-                vy = BOUNCE_VY; by = p.y - BSKT_BOT;
-                if (p.type === 'win') { endGame('win'); return; }
-                break;
-            }
-        }
+    // Soft floor — bounce if balloon goes below start area
+    const floor = WORLD_H - 80;
+    if (by + BSKT_BOT > floor) {
+        by = floor - BSKT_BOT;
+        vy = -Math.abs(vy) * BOUNCE;
     }
 
-    // Camera (only scrolls up)
+    // Top of world cap
+    if (by < 10) { by = 10; vy = Math.abs(vy) * BOUNCE; }
+
+    // Camera: follow balloon upward (never scroll down)
     const targetTop = by - H * 0.38;
     if (targetTop < camTop) camTop = targetTop;
 
@@ -386,11 +336,11 @@ function update() {
     const pct = Math.min(1, Math.max(0, (WORLD_H - by - 100) / (WORLD_H - WIN_Y - 100)));
     document.getElementById('progress-fill').style.height = (pct * 100) + '%';
 
-    // Death
-    if (by > camTop + H + 120) endGame('dead');
+    // Win condition
+    if (by < WIN_Y) endGame();
 }
 
-// ═══════════════════════ RENDER ═══════════════════════════
+// ═══════════════════════ RENDER ══════════════════════════
 function render() {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
@@ -401,9 +351,6 @@ function render() {
     bgClouds.forEach(c => {
         if (c.y + c.th * c.sc > camTop - 20 && c.y < camTop + H + 20) drawBgCloud(c);
     });
-    platforms.forEach(p => {
-        if (p.y > camTop - 40 && p.y < camTop + H + 40) drawPlatform(p);
-    });
     drawWinZone();
 
     const tilt = Math.min(Math.max(vx * 1.6, -14), 14) * Math.PI / 180;
@@ -412,22 +359,17 @@ function render() {
     ctx.restore();
 }
 
-// ═══════════════════════ STATE MACHINE ════════════════════
-function endGame(result) {
-    state = result;
+// ═══════════════════════ STATE ════════════════════════════
+function endGame() {
+    state = 'win';
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('progress-bar').classList.add('hidden');
-    if (result === 'dead') {
-        document.getElementById('dead-txt').textContent = `You reached ${topScore}m — try to go higher!`;
-        document.getElementById('dead-screen').classList.remove('hidden');
-    } else {
-        document.getElementById('win-txt').textContent = `You soared ${topScore}m into the sky!`;
-        document.getElementById('win-screen').classList.remove('hidden');
-    }
+    document.getElementById('win-txt').textContent = `You soared ${topScore}m into the sky!`;
+    document.getElementById('win-screen').classList.remove('hidden');
 }
 
 function startGame() {
-    ['start-screen','dead-screen','win-screen'].forEach(id =>
+    ['start-screen','win-screen'].forEach(id =>
         document.getElementById(id).classList.add('hidden'));
     document.getElementById('hud').classList.remove('hidden');
     document.getElementById('progress-bar').classList.remove('hidden');
@@ -449,15 +391,11 @@ window.addEventListener('touchend',    () => { mx = my = -9999; });
 window.addEventListener('touchcancel', () => { mx = my = -9999; });
 
 document.getElementById('start-btn').addEventListener('click', startGame);
-document.getElementById('retry-btn').addEventListener('click', startGame);
 document.getElementById('again-btn').addEventListener('click', startGame);
 
 // ═══════════════════════ LOOP ═════════════════════════════
 function loop() { update(); render(); requestAnimationFrame(loop); }
-
-loadAssets().then(() => {
-    // Assets loaded — game is ready when user clicks start
-});
+loadAssets().then(() => {}); // preload images
 loop();
 </script>
 </body>
