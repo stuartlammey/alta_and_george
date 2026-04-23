@@ -147,14 +147,14 @@ function loadAssets() {
 
 // ════════════════════════ STATE ════════════════════════
 let state = 'start';
-let bx, by, vx, vy, camTop, topScore, bgClouds, foxLanes, tick, foxHitTimer;
+let bx, by, vx, vy, camTop, topScore, bgClouds, foxLanes, tick, foxHitTimer, firstFoxSeen, firstFoxTimer;
 let mx=-9999, my=-9999;
 
 function initGame() {
     bx = GAME_W / 2; by = WORLD_H - 200;
     vx = 0; vy = 0;
     camTop = by - H * 0.6;
-    topScore = 0; tick = 0; foxHitTimer = 0;
+    topScore = 0; tick = 0; foxHitTimer = 0; firstFoxSeen = false; firstFoxTimer = 0;
     generateClouds();
     generateFoxes();
 }
@@ -163,7 +163,7 @@ function initGame() {
 function generateClouds() {
     bgClouds = [];
     for (let y=50; y<WORLD_H; y += 420+Math.random()*500) {
-        const sc = 0.45+Math.random()*0.55;
+        const sc = 0.85+Math.random()*0.95;
         bgClouds.push({
             x: Math.random()*Math.max(1,GAME_W-230*sc), y, sc,
             circles:[{cx:55,cy:60,r:44},{cx:108,cy:36,r:42},{cx:162,cy:54,r:46},{cx:92,cy:72,r:35}],
@@ -175,7 +175,7 @@ function generateClouds() {
 function generateFoxes() {
     foxLanes = [];
     // Spread fox lanes throughout the world, avoiding the very start and win zone
-    for (let y=WORLD_H*0.08; y<WORLD_H*0.92; y += 380+Math.random()*420) {
+    for (let y=WORLD_H*0.08; y<WORLD_H*0.92; y += 760+Math.random()*840) {
         foxLanes.push({
             worldY: y - FOX_H/2,         // centre the fox vertically on the lane
             x: -FOX_W - Math.random()*GAME_W, // staggered start off left edge
@@ -346,8 +346,8 @@ function drawBalloon(cx,cy,tiltRad) {
         ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
     });
 
-    photoCircle(altaImg,  OX+79*S, OY+225*S,20*S);
-    photoCircle(georgeImg,OX+121*S,OY+225*S,18*S);
+    photoCircle(altaImg,  OX+79*S, OY+208*S, 32*S);
+    photoCircle(georgeImg,OX+121*S,OY+210*S, 29*S);
     ctx.restore();
 }
 
@@ -395,6 +395,16 @@ function update() {
         if (fox.x > GAME_W+FOX_W) fox.x = -FOX_W; // loop back from left
     });
 
+    // First-fox-seen banner
+    if (!firstFoxSeen && firstFoxTimer === 0) {
+        for (const fox of foxLanes) {
+            if (fox.worldY > camTop - FOX_H && fox.worldY < camTop + H + FOX_H) {
+                firstFoxSeen = true; firstFoxTimer = 160; break;
+            }
+        }
+    }
+    if (firstFoxTimer > 0) firstFoxTimer--;
+
     // Fox collision — check foxes near the balloon's world Y
     const ballTop=by-40, ballBot=by+BSKT_BOT;
     for (const fox of foxLanes) {
@@ -441,6 +451,20 @@ function render() {
     drawBalloon(bx,by,tilt);
 
     ctx.restore();
+
+    // "The bad fox" first-appearance banner
+    if (firstFoxTimer > 0) {
+        const fade = firstFoxTimer < 50 ? firstFoxTimer / 50 : Math.min(1, (160 - firstFoxTimer) / 25);
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(GAME_X, H * 0.3, GAME_W, H * 0.18);
+        ctx.fillStyle = '#fff';
+        ctx.font = `italic bold ${Math.round(H * 0.07)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🦊  the bad fox  🦊', GAME_X + GAME_W / 2, H * 0.415);
+        ctx.restore();
+    }
 
     // Fox hit flash — red overlay on game strip
     if (foxHitTimer>0) {
