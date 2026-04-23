@@ -88,7 +88,7 @@
 // ════════════════════════ WORLD CONSTANTS ════════════════════════
 const WORLD_H    = 6000;
 const WIN_Y      = 280;
-const GRAVITY    = 0.06;
+const GRAVITY    = 0.09;
 const REP_RAD    = 300;
 const REP_FORCE  = 8000;
 const DAMPING    = 0.87;
@@ -127,7 +127,17 @@ resize();
 window.addEventListener('resize', resize);
 
 // ════════════════════════ ASSETS ════════════════════════
-let furImg=null, altaImg=null, georgeImg=null, foxImg=null;
+let furImg=null, altaImg=null, georgeImg=null, foxCanvas=null;
+
+// Normalise an image through an offscreen canvas — fixes iOS Safari colour-profile tinting
+function normalise(img) {
+    if (!img) return null;
+    const oc = document.createElement('canvas');
+    oc.width = img.naturalWidth || FOX_W;
+    oc.height = img.naturalHeight || FOX_H;
+    oc.getContext('2d').drawImage(img, 0, 0);
+    return oc;
+}
 
 function loadAssets() {
     const mk = src => new Promise(res => {
@@ -140,9 +150,8 @@ function loadAssets() {
         mk('images/alta-fur.jpg'),
         mk('images/alta.jpg'),
         mk('images/george.jpg'),
-        // Try png first, then jpg for fox
         mk('images/fox.png').then(img => img || mk('images/fox.jpg')),
-    ]).then(([f,a,g,x]) => { furImg=f; altaImg=a; georgeImg=g; foxImg=x; });
+    ]).then(([f,a,g,x]) => { furImg=f; altaImg=a; georgeImg=g; foxCanvas=normalise(x); });
 }
 
 // ════════════════════════ STATE ════════════════════════
@@ -289,8 +298,8 @@ function drawWinZone() {
 
 function drawFox(fox) {
     const y = fox.worldY;
-    if (foxImg) {
-        ctx.drawImage(foxImg, fox.x, y, FOX_W, FOX_H);
+    if (foxCanvas) {
+        ctx.drawImage(foxCanvas, fox.x, y, FOX_W, FOX_H);
     } else {
         // emoji fallback
         ctx.font = `${FOX_H*0.85}px sans-serif`;
@@ -395,7 +404,9 @@ function update() {
     const dx = bx-gameMx, dy = by-worldMy;
     const dist = Math.hypot(dx,dy)||0.001;
     if (dist<REP_RAD) {
-        const f=REP_FORCE/Math.max(dist*dist,2500);
+        // Repulsion varies ±33% on a slow ~20-second cycle
+        const repMult = 1 + 0.33 * Math.sin(tick * 0.0105);
+        const f = (REP_FORCE * repMult) / Math.max(dist*dist, 2500);
         vx+=(dx/dist)*f; vy+=(dy/dist)*f;
     }
 
