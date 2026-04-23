@@ -404,16 +404,18 @@ function update() {
     const dx = bx-gameMx, dy = by-worldMy;
     const dist = Math.hypot(dx,dy)||0.001;
     if (dist<REP_RAD) {
-        // Repulsion varies ±33% on a slow ~20-second cycle
-        const repMult = 1 + 0.33 * Math.sin(tick * 0.0105);
-        const f = (REP_FORCE * repMult) / Math.max(dist*dist, 2500);
+        const f = REP_FORCE / Math.max(dist*dist, 2500);
         vx+=(dx/dist)*f; vy+=(dy/dist)*f;
     }
+
+    // Wind — slow sinusoid (~20 s period), shared between balloon and clouds
+    const windV = 1.4 * Math.sin(tick * 0.0052);  // px/frame, ±1.4 max
+    vx += windV * 0.09;                            // gentle push on balloon
 
     vx*=DAMPING; vy*=DAMPING;
     bx+=vx; by+=vy;
 
-    // Horizontal wrap within game area
+    // Horizontal bounce off sides
     if (bx-ENV_HW < 0)       { bx=ENV_HW;        vx= Math.abs(vx)*BOUNCE_E; }
     if (bx+ENV_HW > GAME_W)  { bx=GAME_W-ENV_HW; vx=-Math.abs(vx)*BOUNCE_E; }
 
@@ -429,7 +431,15 @@ function update() {
     // Update foxes
     foxLanes.forEach(fox => {
         fox.x += fox.speed;
-        if (fox.x > GAME_W+FOX_W) fox.x = -FOX_W; // loop back from left
+        if (fox.x > GAME_W+FOX_W) fox.x = -FOX_W;
+    });
+
+    // Drift clouds with the same wind; wrap when they leave the game area
+    (bgClouds||[]).forEach(c => {
+        c.x += windV;
+        const cw = Math.max(...c.circles.map(o=>(o.cx+o.r))) * c.sc;
+        if (c.x > GAME_W + cw)  c.x -= GAME_W + cw * 2;
+        if (c.x + cw < 0)       c.x += GAME_W + cw * 2;
     });
 
     // First-fox-seen banner
