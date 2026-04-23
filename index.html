@@ -494,11 +494,11 @@ function update() {
     // Nappy drop at halfway — jettison dead weight, unlock 50% boost
     if (!nappyDropped && by < WORLD_H / 2) {
         nappyDropped = true; nappyActive = true; boostActive = true;
-        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 2;
+        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 1;
         nappyBannerTimer = 180;
     }
     if (nappyActive) {
-        nappyVy += 0.4;
+        nappyVy += 0.22;
         nappyWorldY += nappyVy;
         if (nappyWorldY > camTop + H + 120) nappyActive = false;
     }
@@ -587,7 +587,7 @@ function render() {
         if (sy>-FOX_H&&sy<H+FOX_H) drawFox(fox);
     });
     if (nappyActive) {
-        ctx.font = `${Math.round(GAME_W * 0.1)}px sans-serif`;
+        ctx.font = `${Math.round(GAME_W * 0.14)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText('💩', nappyX, nappyWorldY);
     }
@@ -601,6 +601,7 @@ function render() {
     if (nappyBannerTimer > 0) {
         const fade = nappyBannerTimer < 50 ? nappyBannerTimer / 50 : Math.min(1, (180 - nappyBannerTimer) / 25);
         ctx.save();
+        ctx.beginPath(); ctx.rect(GAME_X, 0, GAME_W, H); ctx.clip();
         ctx.globalAlpha = fade;
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(GAME_X, H * 0.3, GAME_W, H * 0.2);
@@ -618,6 +619,7 @@ function render() {
     if (firstFoxTimer > 0) {
         const fade = firstFoxTimer < 50 ? firstFoxTimer / 50 : Math.min(1, (160 - firstFoxTimer) / 25);
         ctx.save();
+        ctx.beginPath(); ctx.rect(GAME_X, 0, GAME_W, H); ctx.clip();
         ctx.globalAlpha = fade;
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(GAME_X, H * 0.3, GAME_W, H * 0.18);
