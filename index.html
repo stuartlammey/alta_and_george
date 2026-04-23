@@ -5,290 +5,460 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Alta &amp; George: Skyward</title>
     <style>
-        html {
-            height: -webkit-fill-available;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        html { height:-webkit-fill-available; }
         body {
-            width: 100vw;
-            height: 100vh;
-            min-height: -webkit-fill-available;
-            min-height: 100dvh;
-            overflow: hidden;
-            touch-action: none;
-            background: linear-gradient(175deg, #2e7dc4 0%, #5ba4e5 25%, #87ceeb 60%, #c8e8f7 100%);
-            cursor: crosshair;
+            width:100vw; height:100vh;
+            min-height:-webkit-fill-available; min-height:100dvh;
+            overflow:hidden; touch-action:none; background:#1a3a6e;
+        }
+        canvas { display:block; position:absolute; top:0; left:0; }
+        #ui { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+
+        #hud {
+            position:absolute; top:14px; right:14px;
+            font-family:Georgia,serif; font-size:1.1rem; color:#fff;
+            text-shadow:0 2px 8px rgba(0,40,100,.6);
+        }
+        #progress-bar {
+            position:absolute; right:10px; top:52px;
+            width:10px; height:160px;
+            background:rgba(255,255,255,.25); border-radius:5px; overflow:hidden;
+        }
+        #progress-fill {
+            position:absolute; bottom:0; width:100%;
+            background:linear-gradient(to top,#FFD93D,#f28b47);
+            border-radius:5px; height:0;
         }
 
-        #scene {
-            position: relative;
-            width: 100%;
-            height: 100%;
+        .screen {
+            position:absolute; inset:0;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            pointer-events:all;
         }
-
-        .cloud {
-            position: absolute;
-            pointer-events: none;
-            filter: drop-shadow(0 10px 20px rgba(0, 50, 120, 0.18));
+        .screen h1 {
+            font-family:Georgia,serif; font-style:italic; color:#fff;
+            font-size:clamp(1.6rem,6vw,2.8rem);
+            text-shadow:0 3px 16px rgba(0,40,120,.7); margin-bottom:10px;
         }
-
-        #balloon-wrap {
-            position: absolute;
-            width: min(200px, 50vw);
-            height: min(280px, 70vw);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            will-change: left, top, transform;
-            filter: drop-shadow(0 14px 28px rgba(0, 40, 100, 0.3));
+        .screen p {
+            font-family:Georgia,serif; color:rgba(255,255,255,.92);
+            font-size:clamp(.82rem,2.8vw,1.05rem);
+            text-align:center; max-width:300px; margin-bottom:6px;
+            text-shadow:0 2px 8px rgba(0,40,120,.5); line-height:1.5;
         }
-
-        .title {
-            position: fixed;
-            top: 22px;
-            width: 100%;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.95);
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: clamp(1.2rem, 5vw, 2.2rem);
-            font-style: italic;
-            text-shadow: 0 2px 20px rgba(0, 60, 140, 0.45);
-            pointer-events: none;
-            z-index: 20;
-            letter-spacing: 0.08em;
-            user-select: none;
+        .btn {
+            margin-top:22px; padding:12px 34px;
+            font-family:Georgia,serif; font-size:1.1rem; font-style:italic;
+            background:rgba(255,255,255,.92); color:#2255aa;
+            border:none; border-radius:28px; cursor:pointer;
+            box-shadow:0 4px 20px rgba(0,0,0,.25); pointer-events:all;
         }
+        .btn:active { background:#fff; transform:scale(.97); }
+        .prizes { font-size:3.5rem; margin:14px 0; letter-spacing:18px; }
+        #start-screen { background:rgba(20,70,160,.42); }
+        #dead-screen  { background:rgba(10,10,45,.58); }
+        #win-screen   { background:rgba(20,70,160,.52); }
+        .hidden { display:none!important; }
     </style>
 </head>
 <body>
-<div id="scene">
-    <h1 class="title">Alta &amp; George: Skyward</h1>
-    <div id="clouds"></div>
+<canvas id="gc"></canvas>
+<div id="ui">
+    <div id="hud"          class="hidden">Height: 0m</div>
+    <div id="progress-bar" class="hidden"><div id="progress-fill"></div></div>
 
-    <div id="balloon-wrap">
-        <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-            <defs>
-                <!-- Alta's fur as balloon envelope fill (covers bounding box of envelope path) -->
-                <pattern id="fur-balloon" patternUnits="userSpaceOnUse" x="22" y="8" width="156" height="170">
-                    <image href="images/alta-fur.jpg" xlink:href="images/alta-fur.jpg"
-                           x="0" y="0" width="156" height="170" preserveAspectRatio="xMidYMid slice"/>
-                </pattern>
-
-                <!-- Circular crops for basket photos -->
-                <clipPath id="alta-photo-clip">
-                    <circle cx="79" cy="225" r="20"/>
-                </clipPath>
-                <clipPath id="george-photo-clip">
-                    <circle cx="121" cy="225" r="18"/>
-                </clipPath>
-            </defs>
-
-            <!-- Envelope shadow -->
-            <ellipse cx="103" cy="112" rx="72" ry="76" fill="rgba(0,0,0,0.10)"/>
-
-            <!-- Fur-textured envelope -->
-            <path d="M100,8 C148,8 178,44 178,92 C178,140 148,170 100,178 C52,170 22,140 22,92 C22,44 52,8 100,8 Z"
-                  fill="url(#fur-balloon)" stroke="#bbb" stroke-width="1.5"/>
-
-            <!-- White softening overlay — keeps fur readable as fabric -->
-            <path d="M100,8 C148,8 178,44 178,92 C178,140 148,170 100,178 C52,170 22,140 22,92 C22,44 52,8 100,8 Z"
-                  fill="white" opacity="0.20"/>
-
-            <!-- Envelope highlight -->
-            <ellipse cx="70" cy="68" rx="16" ry="26"
-                     fill="white" opacity="0.28"
-                     transform="rotate(-18,70,68)"/>
-
-            <!-- Ropes -->
-            <line x1="52"  y1="172" x2="63"  y2="204" stroke="#7a5c10" stroke-width="1.5"/>
-            <line x1="74"  y1="177" x2="72"  y2="204" stroke="#7a5c10" stroke-width="1.5"/>
-            <line x1="100" y1="178" x2="100" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
-            <line x1="126" y1="177" x2="128" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
-            <line x1="148" y1="172" x2="137" y2="204" stroke="#7a5c10" stroke-width="1.5"/>
-
-            <!-- Basket body -->
-            <path d="M60,202 Q60,198 64,198 L136,198 Q140,198 140,202 L140,248
-                     Q140,253 136,253 L64,253 Q60,253 60,248 Z"
-                  fill="#c8a565" stroke="#7a5c10" stroke-width="2"/>
-
-            <!-- Basket top rim -->
-            <rect x="58" y="196" width="84" height="8" rx="3"
-                  fill="#a87c3a" stroke="#7a5c10" stroke-width="1.5"/>
-
-            <!-- Basket weave lines -->
-            <line x1="80"  y1="204" x2="80"  y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
-            <line x1="100" y1="204" x2="100" y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
-            <line x1="120" y1="204" x2="120" y2="253" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
-            <line x1="60"  y1="220" x2="140" y2="220" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
-            <line x1="60"  y1="236" x2="140" y2="236" stroke="#7a5c10" stroke-width="1" opacity="0.4"/>
-
-            <!-- Alta photo, circular crop -->
-            <image href="images/alta.jpg" xlink:href="images/alta.jpg"
-                   x="59" y="205" width="40" height="40"
-                   clip-path="url(#alta-photo-clip)" preserveAspectRatio="xMidYMid slice"/>
-            <circle cx="79" cy="225" r="20" fill="none" stroke="#7a5c10" stroke-width="1" opacity="0.5"/>
-
-            <!-- George photo, circular crop -->
-            <image href="images/george.jpg" xlink:href="images/george.jpg"
-                   x="103" y="207" width="36" height="36"
-                   clip-path="url(#george-photo-clip)" preserveAspectRatio="xMidYMid slice"/>
-            <circle cx="121" cy="225" r="18" fill="none" stroke="#7a5c10" stroke-width="1" opacity="0.5"/>
-
-        </svg>
+    <div id="start-screen" class="screen">
+        <h1>Alta &amp; George: Skyward</h1>
+        <p>Guide the balloon to the top of the sky!</p>
+        <p>Move your mouse (or drag a finger) near the balloon — it floats away like a magnet.</p>
+        <p>Land on platforms to bounce higher. Don't fall off the bottom!</p>
+        <button class="btn" id="start-btn">Launch! 🎈</button>
+    </div>
+    <div id="dead-screen" class="screen hidden">
+        <h1>Oh no! 😬</h1>
+        <p id="dead-txt">You reached 0m</p>
+        <button class="btn" id="retry-btn">Try again 🎈</button>
+    </div>
+    <div id="win-screen" class="screen hidden">
+        <h1>You made it! 🎉</h1>
+        <p>Alta and George soared to the very top of the sky!</p>
+        <div class="prizes">🍼🦴</div>
+        <p id="win-txt"></p>
+        <button class="btn" id="again-btn">Fly again 🎈</button>
     </div>
 </div>
 
 <script>
-    // ─────────────────────────────────────────────
-    //  CONFIG
-    // ─────────────────────────────────────────────
-    const FUR_SRC = 'images/alta-fur.jpg';
+// ═══════════════════════ CONSTANTS ═══════════════════════
+const WORLD_H   = 9000;   // total world height (px, y=0 at top)
+const WIN_Y     = 260;    // win when balloon y < this
+const GRAVITY   = 0.38;
+const BOUNCE_VY = -18;    // upward velocity on platform hit
+const REP_RAD   = 260;    // repulsion radius (px)
+const REP_FORCE = 6000;
+const DAMP_X    = 0.91;
+const DAMP_Y    = 0.94;
+const S         = 0.55;             // balloon SVG scale (200×280 → 110×154)
+const OX        = -100 * S;         // SVG→canvas origin offset X (-55)
+const OY        = -140 * S;         // SVG→canvas origin offset Y (-77)
+const BSKT_BOT  = Math.round(113 * S); // basket bottom from balloon centre (62)
+const ENV_HW    = Math.round(78  * S); // envelope half-width             (43)
 
-    const CLOUD_DEFS = [
-        { x:  4, y:  7, w: 250, h: 135,
-          circles: [{cx:65,cy:90,r:58},{cx:120,cy:62,r:52},{cx:185,cy:84,r:55},{cx:105,cy:100,r:46}] },
-        { x: 66, y:  5, w: 210, h: 115,
-          circles: [{cx:55,cy:76,r:46},{cx:108,cy:52,r:50},{cx:162,cy:72,r:44}] },
-        { x: 38, y: 60, w: 190, h: 106,
-          circles: [{cx:52,cy:70,r:42},{cx:98,cy:46,r:46},{cx:146,cy:66,r:40}] },
-        { x:  0, y: 52, w: 230, h: 124,
-          circles: [{cx:62,cy:82,r:54},{cx:116,cy:58,r:50},{cx:170,cy:78,r:48}] },
-        { x: 74, y: 58, w: 200, h: 112,
-          circles: [{cx:54,cy:74,r:48},{cx:104,cy:50,r:46},{cx:154,cy:70,r:48}] },
-        { x: 28, y: 18, w: 170, h:  96,
-          circles: [{cx:46,cy:62,r:38},{cx:90,cy:42,r:40},{cx:130,cy:60,r:38}] },
-    ];
+// ═══════════════════════ CANVAS ══════════════════════════
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+let W = 0, H = 0;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
 
-    // ─────────────────────────────────────────────
-    //  BUILD CLOUDS
-    // ─────────────────────────────────────────────
-    function buildCloud(def, idx) {
-        const { w, h, circles } = def;
-        const clipId = `cc${idx}`;
-        const bottomY = Math.max(...circles.map(c => c.cy));
-        const circleMarkup = circles
-            .map(c => `<circle cx="${c.cx}" cy="${c.cy}" r="${c.r}"/>`)
-            .join('');
+// ═══════════════════════ ASSETS ══════════════════════════
+let furImg = null, altaImg = null, georgeImg = null, assetsOk = false;
+function loadAssets() {
+    return new Promise(res => {
+        let n = 0;
+        const done = () => { if (++n === 3) { assetsOk = true; res(); } };
+        const mk = (src) => { const i = new Image(); i.onload = done; i.onerror = done; i.src = src; return i; };
+        furImg    = mk('images/alta-fur.jpg');
+        altaImg   = mk('images/alta.jpg');
+        georgeImg = mk('images/george.jpg');
+    });
+}
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                     width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <defs>
-    <clipPath id="${clipId}">
-      ${circleMarkup}
-      <rect x="0" y="${bottomY}" width="${w}" height="${h - bottomY + 2}"/>
-    </clipPath>
-  </defs>
-  <image href="${FUR_SRC}" xlink:href="${FUR_SRC}"
-         x="0" y="0" width="${w}" height="${h}"
-         clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice"/>
-  <rect x="0" y="0" width="${w}" height="${h}"
-        fill="white" opacity="0.50" clip-path="url(#${clipId})"/>
-</svg>`;
+// ═══════════════════════ STATE ═══════════════════════════
+let state = 'start';
+let bx = 0, by = WORLD_H - 160, vx = 0, vy = 0;
+let camTop = WORLD_H - 600;
+let topScore = 0, tick = 0;
+let platforms = [], bgClouds = [];
+let mx = -9999, my = -9999;
+
+function initGame() {
+    bx = W / 2; by = WORLD_H - 160; vx = 0; vy = 0;
+    camTop = WORLD_H - H;
+    topScore = 0; tick = 0;
+    generatePlatforms();
+    generateClouds();
+}
+
+// ═══════════════════════ GENERATION ══════════════════════
+function generatePlatforms() {
+    platforms = [];
+    platforms.push({ x: W/2 - 90, y: WORLD_H - 100, w: 180, h: 14, type: 'normal' });
+    let y = WORLD_H - 220;
+    while (y > WIN_Y + 80) {
+        const hf = Math.max(0, 1 - y / WORLD_H);
+        const w  = Math.max(52, 110 - hf * 55);
+        const x  = 24 + Math.random() * Math.max(1, W - w - 48);
+        const moving = hf > 0.35 && Math.random() < 0.28;
+        const p = { x, y, w, h: 14, type: moving ? 'moving' : 'normal' };
+        if (moving) {
+            p.speed = 0.9 + Math.random() * 1.4;
+            p.dir = Math.random() < 0.5 ? 1 : -1;
+            p.minX = 24; p.maxX = W - w - 24;
+        }
+        platforms.push(p);
+        y -= 95 + hf * 195 + Math.random() * 55;
     }
+    platforms.push({ x: W/2 - 110, y: WIN_Y, w: 220, h: 18, type: 'win' });
+}
 
-    const cloudsContainer = document.getElementById('clouds');
-    const cloudEls = [];
+function generateClouds() {
+    bgClouds = [];
+    for (let y = 80; y < WORLD_H; y += 480 + Math.random() * 520) {
+        const sc = 0.5 + Math.random() * 0.6;
+        bgClouds.push({
+            x: Math.random() * Math.max(1, W - 230 * sc), y, sc,
+            circles: [{cx:55,cy:60,r:44},{cx:108,cy:36,r:42},{cx:162,cy:54,r:46},{cx:92,cy:72,r:35}],
+            tw: 220, th: 118,
+        });
+    }
+}
 
-    CLOUD_DEFS.forEach((def, i) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'cloud';
-        wrap.style.cssText = `position:absolute; left:${def.x}vw; top:${def.y}vh;`;
-        wrap.innerHTML = buildCloud(def, i);
-        cloudsContainer.appendChild(wrap);
-        cloudEls.push(wrap);
+// ═══════════════════════ DRAWING ═════════════════════════
+
+function drawBackground() {
+    const prog = Math.max(0, Math.min(1, (WORLD_H - by) / (WORLD_H - WIN_Y)));
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    if (prog < 0.6) {
+        g.addColorStop(0, '#2e7dc4'); g.addColorStop(.45, '#5ba4e5');
+        g.addColorStop(.8, '#87ceeb'); g.addColorStop(1, '#c8e8f7');
+    } else {
+        g.addColorStop(0, '#1a3060'); g.addColorStop(.35, '#2a6ab0');
+        g.addColorStop(.75, '#87ceeb'); g.addColorStop(1, '#c8e8f7');
+    }
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+function drawBgCloud(c) {
+    if (!furImg) return;
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.scale(c.sc, c.sc);
+    const bottomY = Math.max(...c.circles.map(o => o.cy));
+    ctx.beginPath();
+    c.circles.forEach(o => ctx.arc(o.cx, o.cy, o.r, 0, Math.PI * 2));
+    ctx.rect(0, bottomY, c.tw, c.th - bottomY + 4);
+    ctx.save(); ctx.clip();
+    ctx.drawImage(furImg, 0, 0, c.tw, c.th);
+    ctx.fillStyle = 'rgba(255,255,255,0.52)'; ctx.fillRect(0, 0, c.tw, c.th);
+    ctx.restore();
+    ctx.restore();
+}
+
+function drawPlatform(p) {
+    const r = 7;
+    ctx.beginPath();
+    ctx.moveTo(p.x + r, p.y);
+    ctx.arcTo(p.x + p.w, p.y,     p.x + p.w, p.y + r,     r);
+    ctx.arcTo(p.x + p.w, p.y+p.h, p.x+p.w-r, p.y + p.h,   r);
+    ctx.arcTo(p.x,       p.y+p.h, p.x,        p.y+p.h-r,   r);
+    ctx.arcTo(p.x,       p.y,     p.x + r,    p.y,         r);
+    ctx.closePath();
+    if (p.type === 'win') {
+        const g = ctx.createLinearGradient(p.x, p.y, p.x+p.w, p.y);
+        g.addColorStop(0,'#FFD93D'); g.addColorStop(.5,'#fff'); g.addColorStop(1,'#FFD93D');
+        ctx.fillStyle = g;
+    } else if (p.type === 'moving') {
+        ctx.fillStyle = '#f4a261';
+    } else {
+        ctx.fillStyle = '#52b788';
+    }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillRect(p.x+5, p.y+2, p.w-10, p.h/2);
+    if (p.type === 'win') {
+        ctx.fillStyle = 'rgba(255,220,0,0.9)';
+        ctx.font = 'bold 12px Georgia'; ctx.textAlign = 'center';
+        ctx.fillText('★  GOAL  ★', p.x + p.w/2, p.y - 8);
+    }
+}
+
+function drawWinZone() {
+    if (WIN_Y < camTop - 130 || WIN_Y > camTop + H + 20) return;
+    const g = ctx.createRadialGradient(W/2, WIN_Y-50, 5, W/2, WIN_Y-50, 140);
+    g.addColorStop(0,'rgba(255,215,40,0.42)'); g.addColorStop(1,'rgba(255,215,40,0)');
+    ctx.fillStyle = g; ctx.fillRect(W/2-150, WIN_Y-180, 300, 180);
+    const bounce = 4 * Math.sin(tick * 0.05);
+    ctx.font = `${36 + bounce}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('🍼', W/2 - 46, WIN_Y - 55);
+    ctx.fillText('🦴', W/2 + 46, WIN_Y - 55);
+}
+
+function envelopePath() {
+    ctx.moveTo(OX+100*S, OY+8*S);
+    ctx.bezierCurveTo(OX+148*S,OY+8*S,   OX+178*S,OY+44*S,  OX+178*S,OY+92*S);
+    ctx.bezierCurveTo(OX+178*S,OY+140*S, OX+148*S,OY+170*S, OX+100*S,OY+178*S);
+    ctx.bezierCurveTo(OX+52*S, OY+170*S, OX+22*S, OY+140*S, OX+22*S, OY+92*S);
+    ctx.bezierCurveTo(OX+22*S, OY+44*S,  OX+52*S, OY+8*S,   OX+100*S,OY+8*S);
+    ctx.closePath();
+}
+
+function photoCircle(img, cx, cy, r) {
+    if (!img) return;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
+    ctx.drawImage(img, cx-r, cy-r, r*2, r*2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.strokeStyle='rgba(122,92,16,0.5)'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function drawBalloon(cx, cy, tiltRad) {
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(tiltRad);
+
+    // Shadow
+    ctx.save(); ctx.translate(4, 8);
+    ctx.beginPath(); envelopePath();
+    ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.fill();
+    ctx.restore();
+
+    // Fur-textured envelope
+    ctx.save();
+    ctx.beginPath(); envelopePath(); ctx.clip();
+    if (furImg) {
+        ctx.drawImage(furImg, OX+22*S, OY+8*S, 156*S, 170*S);
+    } else {
+        ctx.fillStyle='#ddd'; ctx.fillRect(OX, OY, 200*S, 200*S);
+    }
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fillRect(OX, OY, 200*S, 200*S);
+    ctx.restore();
+
+    // Outline
+    ctx.beginPath(); envelopePath();
+    ctx.strokeStyle='rgba(160,160,160,0.6)'; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Specular highlight
+    ctx.save();
+    ctx.beginPath(); envelopePath(); ctx.clip();
+    ctx.save();
+    ctx.translate(OX+70*S, OY+68*S); ctx.rotate(-18*Math.PI/180);
+    ctx.beginPath(); ctx.ellipse(0,0,16*S,26*S,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.fill();
+    ctx.restore(); ctx.restore();
+
+    // Ropes
+    ctx.strokeStyle='#7a5c10'; ctx.lineWidth=1.5;
+    [[52,172,63,204],[74,177,72,204],[100,178,100,204],[126,177,128,204],[148,172,137,204]]
+    .forEach(([x1,y1,x2,y2])=>{
+        ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
     });
 
-    // ─────────────────────────────────────────────
-    //  POINTER TRACKING — mouse + touch unified
-    // ─────────────────────────────────────────────
-    let mx = -9999;
-    let my = -9999;
+    // Basket
+    const bkX=OX+60*S, bkY=OY+198*S, bkW=80*S, bkH=55*S, bkR=5*S;
+    ctx.beginPath();
+    ctx.moveTo(bkX+bkR,bkY); ctx.arcTo(bkX+bkW,bkY,bkX+bkW,bkY+bkR,bkR);
+    ctx.arcTo(bkX+bkW,bkY+bkH,bkX+bkW-bkR,bkY+bkH,bkR);
+    ctx.arcTo(bkX,bkY+bkH,bkX,bkY+bkH-bkR,bkR); ctx.arcTo(bkX,bkY,bkX+bkR,bkY,bkR);
+    ctx.closePath();
+    ctx.fillStyle='#c8a565'; ctx.fill();
+    ctx.strokeStyle='#7a5c10'; ctx.lineWidth=2; ctx.stroke();
 
-    // Desktop
-    window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-    window.addEventListener('mouseleave', () => { mx = -9999; my = -9999; });
+    // Rim
+    ctx.fillStyle='#a87c3a';
+    ctx.fillRect(OX+58*S, OY+196*S, 84*S, 8*S);
 
-    // Mobile — preventDefault stops page scroll/zoom while dragging
-    window.addEventListener('touchstart', e => {
-        e.preventDefault();
-        mx = e.touches[0].clientX;
-        my = e.touches[0].clientY;
-    }, { passive: false });
+    // Weave
+    ctx.strokeStyle='rgba(122,92,16,0.4)'; ctx.lineWidth=1;
+    [[80,204,80,253],[100,204,100,253],[120,204,120,253],[60,220,140,220],[60,236,140,236]]
+    .forEach(([x1,y1,x2,y2])=>{
+        ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
+    });
 
-    window.addEventListener('touchmove', e => {
-        e.preventDefault();
-        mx = e.touches[0].clientX;
-        my = e.touches[0].clientY;
-    }, { passive: false });
+    // Photos
+    photoCircle(altaImg,   OX+79*S,  OY+225*S, 20*S);
+    photoCircle(georgeImg, OX+121*S, OY+225*S, 18*S);
 
-    window.addEventListener('touchend',   () => { mx = -9999; my = -9999; });
-    window.addEventListener('touchcancel',() => { mx = -9999; my = -9999; });
+    ctx.restore();
+}
 
-    // ─────────────────────────────────────────────
-    //  BALLOON PHYSICS
-    // ─────────────────────────────────────────────
-    const balloonWrap = document.getElementById('balloon-wrap');
+// ═══════════════════════ UPDATE ═══════════════════════════
+function update() {
+    if (state !== 'playing') return;
+    tick++;
 
-    let bx = window.innerWidth  / 2;
-    let by = window.innerHeight / 2;
-    let vx = 0;
-    let vy = 0;
-    let tick = 0;
+    platforms.forEach(p => {
+        if (p.type !== 'moving') return;
+        p.x += p.speed * p.dir;
+        if (p.x <= p.minX || p.x >= p.maxX) p.dir *= -1;
+    });
 
-    const REPEL_RADIUS = 320;
-    const REPEL_FORCE  = 22000;
-    const DAMPING      = 0.87;
-    const BOUNCE_DAMP  = 0.42;
-    const MARGIN       = 55;
+    const prevBy = by;
+    vy += GRAVITY;
 
-    function frame() {
-        tick++;
-
-        const dx   = bx - mx;
-        const dy   = by - my;
-        const dist = Math.hypot(dx, dy) || 0.001;
-
-        if (dist < REPEL_RADIUS) {
-            const f = REPEL_FORCE / Math.max(dist * dist, 2500);
-            vx += (dx / dist) * f;
-            vy += (dy / dist) * f;
-        }
-
-        // Idle float
-        vx += Math.sin(tick * 0.00085) * 0.06;
-        vy += Math.sin(tick * 0.00110 + 1.2) * 0.09;
-
-        vx *= DAMPING;
-        vy *= DAMPING;
-
-        bx += vx;
-        by += vy;
-
-        const W = window.innerWidth;
-        const H = window.innerHeight;
-        if (bx < MARGIN)     { bx = MARGIN;     vx =  Math.abs(vx) * BOUNCE_DAMP; }
-        if (bx > W - MARGIN) { bx = W - MARGIN; vx = -Math.abs(vx) * BOUNCE_DAMP; }
-        if (by < MARGIN)     { by = MARGIN;      vy =  Math.abs(vy) * BOUNCE_DAMP; }
-        if (by > H - MARGIN) { by = H - MARGIN;  vy = -Math.abs(vy) * BOUNCE_DAMP; }
-
-        const tilt = Math.min(Math.max(vx * 1.8, -14), 14);
-        balloonWrap.style.left      = bx + 'px';
-        balloonWrap.style.top       = by + 'px';
-        balloonWrap.style.transform = `translate(-50%, -50%) rotate(${tilt}deg)`;
-
-        // Cloud parallax
-        const sceneX = (bx - W / 2) / W;
-        const sceneY = (by - H / 2) / H;
-        cloudEls.forEach((el, i) => {
-            const pf = 0.018 + i * 0.007;
-            el.style.transform = `translate(${sceneX * pf * W}px, ${sceneY * pf * H}px)`;
-        });
-
-        requestAnimationFrame(frame);
+    const dx = bx - mx, dy = by - my;
+    const dist = Math.hypot(dx, dy) || 0.001;
+    if (dist < REP_RAD) {
+        const f = REP_FORCE / Math.max(dist * dist, 2500);
+        vx += (dx / dist) * f;
+        vy += (dy / dist) * f;
     }
 
-    requestAnimationFrame(frame);
+    vx *= DAMP_X; vy *= DAMP_Y;
+    bx += vx; by += vy;
+
+    // Horizontal wrap
+    if (bx < -ENV_HW)    bx = W + ENV_HW;
+    if (bx > W + ENV_HW) bx = -ENV_HW;
+
+    // Platform collisions (basket bottom crossing platform top while falling)
+    if (vy > 0) {
+        const bot = by + BSKT_BOT, prevBot = prevBy + BSKT_BOT;
+        for (const p of platforms) {
+            if (prevBot <= p.y && bot >= p.y &&
+                bx + ENV_HW > p.x && bx - ENV_HW < p.x + p.w) {
+                vy = BOUNCE_VY; by = p.y - BSKT_BOT;
+                if (p.type === 'win') { endGame('win'); return; }
+                break;
+            }
+        }
+    }
+
+    // Camera (only scrolls up)
+    const targetTop = by - H * 0.38;
+    if (targetTop < camTop) camTop = targetTop;
+
+    // Score
+    const h = Math.max(0, Math.floor((WORLD_H - by) / 10));
+    if (h > topScore) topScore = h;
+    document.getElementById('hud').textContent = `Height: ${topScore}m`;
+    const pct = Math.min(1, Math.max(0, (WORLD_H - by - 100) / (WORLD_H - WIN_Y - 100)));
+    document.getElementById('progress-fill').style.height = (pct * 100) + '%';
+
+    // Death
+    if (by > camTop + H + 120) endGame('dead');
+}
+
+// ═══════════════════════ RENDER ═══════════════════════════
+function render() {
+    ctx.clearRect(0, 0, W, H);
+    drawBackground();
+
+    ctx.save();
+    ctx.translate(0, -camTop);
+
+    bgClouds.forEach(c => {
+        if (c.y + c.th * c.sc > camTop - 20 && c.y < camTop + H + 20) drawBgCloud(c);
+    });
+    platforms.forEach(p => {
+        if (p.y > camTop - 40 && p.y < camTop + H + 40) drawPlatform(p);
+    });
+    drawWinZone();
+
+    const tilt = Math.min(Math.max(vx * 1.6, -14), 14) * Math.PI / 180;
+    drawBalloon(bx, by, tilt);
+
+    ctx.restore();
+}
+
+// ═══════════════════════ STATE MACHINE ════════════════════
+function endGame(result) {
+    state = result;
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('progress-bar').classList.add('hidden');
+    if (result === 'dead') {
+        document.getElementById('dead-txt').textContent = `You reached ${topScore}m — try to go higher!`;
+        document.getElementById('dead-screen').classList.remove('hidden');
+    } else {
+        document.getElementById('win-txt').textContent = `You soared ${topScore}m into the sky!`;
+        document.getElementById('win-screen').classList.remove('hidden');
+    }
+}
+
+function startGame() {
+    ['start-screen','dead-screen','win-screen'].forEach(id =>
+        document.getElementById(id).classList.add('hidden'));
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('progress-bar').classList.remove('hidden');
+    initGame();
+    state = 'playing';
+}
+
+// ═══════════════════════ INPUT ════════════════════════════
+window.addEventListener('mousemove',  e => { mx = e.clientX; my = e.clientY; });
+window.addEventListener('mouseleave', () => { mx = my = -9999; });
+
+window.addEventListener('touchstart', e => {
+    e.preventDefault(); mx = e.touches[0].clientX; my = e.touches[0].clientY;
+}, { passive: false });
+window.addEventListener('touchmove', e => {
+    e.preventDefault(); mx = e.touches[0].clientX; my = e.touches[0].clientY;
+}, { passive: false });
+window.addEventListener('touchend',    () => { mx = my = -9999; });
+window.addEventListener('touchcancel', () => { mx = my = -9999; });
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('retry-btn').addEventListener('click', startGame);
+document.getElementById('again-btn').addEventListener('click', startGame);
+
+// ═══════════════════════ LOOP ═════════════════════════════
+function loop() { update(); render(); requestAnimationFrame(loop); }
+
+loadAssets().then(() => {
+    // Assets loaded — game is ready when user clicks start
+});
+loop();
 </script>
 </body>
 </html>
