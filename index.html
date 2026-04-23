@@ -348,7 +348,7 @@ function render() {
     ctx.save();
     ctx.translate(0, -camTop);
 
-    bgClouds.forEach(c => {
+    (bgClouds || []).forEach(c => {
         if (c.y + c.th * c.sc > camTop - 20 && c.y < camTop + H + 20) drawBgCloud(c);
     });
     drawWinZone();
@@ -396,6 +396,7 @@ document.getElementById('again-btn').addEventListener('click', startGame);
 // ═══════════════════════ LOOP ═════════════════════════════
 function loop() { update(); render(); requestAnimationFrame(loop); }
 loadAssets().then(() => {}); // preload images
+initGame(); // initialise world immediately so balloon is visible behind start screen
 loop();
 </script>
 </body>
