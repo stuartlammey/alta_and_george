@@ -203,6 +203,7 @@ function loadAssets() {
 // ════════════════════════ STATE ════════════════════════
 let state = 'start';
 let bx, by, vx, vy, camTop, topScore, bgClouds, foxLanes, tick, foxHitTimer, firstFoxSeen, firstFoxTimer;
+let nappyDropped, nappyActive, nappyX, nappyWorldY, nappyVy, nappyBannerTimer, boostActive;
 let mx=-9999, my=-9999, gameStartTime=0;
 
 function initGame() {
@@ -210,6 +211,8 @@ function initGame() {
     vx = 0; vy = 0;
     camTop = by - H * 0.6;
     topScore = 0; tick = 0; foxHitTimer = 0; firstFoxSeen = false; firstFoxTimer = 0;
+    nappyDropped = false; nappyActive = false; boostActive = false;
+    nappyX = 0; nappyWorldY = 0; nappyVy = 0; nappyBannerTimer = 0;
     generateClouds();
     generateFoxes();
 }
@@ -474,18 +477,32 @@ function update() {
     vy += Math.sin(tick*0.00110+1.2)*0.07;
 
     // Repulsion — convert screen mouse to game-local coords, then world Y
+    const boost = boostActive ? 1.5 : 1;
     const gameMx = mx - GAME_X;   // screen X → game X
     const worldMy = my + camTop;  // screen Y → world Y
     const dx = bx-gameMx, dy = by-worldMy;
     const dist = Math.hypot(dx,dy)||0.001;
     if (dist<REP_RAD) {
-        const f = REP_FORCE / Math.max(dist*dist, 2500);
+        const f = REP_FORCE * boost / Math.max(dist*dist, 2500);
         vx+=(dx/dist)*f; vy+=(dy/dist)*f;
     }
 
     // Wind — slow sinusoid (~20 s period), shared between balloon and clouds
     const windV = 1.4 * Math.sin(tick * 0.0052);  // px/frame, ±1.4 max
-    vx += windV * 0.09;                            // gentle push on balloon
+    vx += windV * 0.09 * boost;                    // gentle push on balloon
+
+    // Nappy drop at halfway — jettison dead weight, unlock 50% boost
+    if (!nappyDropped && by < WORLD_H / 2) {
+        nappyDropped = true; nappyActive = true; boostActive = true;
+        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 2;
+        nappyBannerTimer = 180;
+    }
+    if (nappyActive) {
+        nappyVy += 0.4;
+        nappyWorldY += nappyVy;
+        if (nappyWorldY > camTop + H + 120) nappyActive = false;
+    }
+    if (nappyBannerTimer > 0) nappyBannerTimer--;
 
     vx*=DAMPING; vy*=DAMPING;
     bx+=vx; by+=vy;
@@ -569,11 +586,33 @@ function render() {
         const sy=fox.worldY-camTop;
         if (sy>-FOX_H&&sy<H+FOX_H) drawFox(fox);
     });
+    if (nappyActive) {
+        ctx.font = `${Math.round(GAME_W * 0.1)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('💩', nappyX, nappyWorldY);
+    }
 
     const tilt=Math.min(Math.max(vx*1.6,-14),14)*Math.PI/180;
     drawBalloon(bx,by,tilt);
 
     ctx.restore();
+
+    // "Nappy overboard" banner + boost notification
+    if (nappyBannerTimer > 0) {
+        const fade = nappyBannerTimer < 50 ? nappyBannerTimer / 50 : Math.min(1, (180 - nappyBannerTimer) / 25);
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(GAME_X, H * 0.3, GAME_W, H * 0.2);
+        ctx.fillStyle = '#fff';
+        ctx.font = `italic bold ${Math.round(H * 0.065)}px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.fillText('💩  Nappy overboard!', GAME_X + GAME_W / 2, H * 0.4);
+        ctx.font = `italic ${Math.round(H * 0.042)}px Georgia`;
+        ctx.fillStyle = '#FFD93D';
+        ctx.fillText('50% boost unlocked 🚀', GAME_X + GAME_W / 2, H * 0.46);
+        ctx.restore();
+    }
 
     // "The bad fox" first-appearance banner
     if (firstFoxTimer > 0) {
