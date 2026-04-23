@@ -160,14 +160,30 @@ function initGame() {
 }
 
 // ════════════════════════ GENERATION ════════════════════════
+const CLOUD_TEMPLATES = [
+    // Classic 4-bump
+    [{cx:55,cy:60,r:44},{cx:108,cy:36,r:42},{cx:162,cy:54,r:46},{cx:92,cy:72,r:35}],
+    // Wide 5-bump
+    [{cx:35,cy:58,r:36},{cx:85,cy:38,r:44},{cx:140,cy:44,r:42},{cx:188,cy:56,r:35},{cx:110,cy:68,r:28}],
+    // Tall puff
+    [{cx:60,cy:72,r:52},{cx:105,cy:38,r:50},{cx:150,cy:66,r:48},{cx:105,cy:92,r:38}],
+    // Small 3-bump
+    [{cx:38,cy:48,r:32},{cx:80,cy:28,r:38},{cx:122,cy:44,r:34}],
+    // Long low strip
+    [{cx:28,cy:52,r:34},{cx:78,cy:40,r:40},{cx:130,cy:36,r:42},{cx:178,cy:46,r:36},{cx:210,cy:54,r:28}],
+    // Fat single-puff
+    [{cx:72,cy:64,r:58},{cx:120,cy:42,r:52},{cx:160,cy:60,r:50}],
+];
+
 function generateClouds() {
     bgClouds = [];
-    for (let y=50; y<WORLD_H; y += 420+Math.random()*500) {
-        const sc = 0.85+Math.random()*0.95;
+    for (let y=50; y<WORLD_H; y += 160+Math.random()*260) {
+        const template = CLOUD_TEMPLATES[Math.floor(Math.random()*CLOUD_TEMPLATES.length)];
+        const sc = 0.7+Math.random()*1.1;
+        const maxCx = Math.max(...template.map(c=>c.cx+c.r));
         bgClouds.push({
-            x: Math.random()*Math.max(1,GAME_W-230*sc), y, sc,
-            circles:[{cx:55,cy:60,r:44},{cx:108,cy:36,r:42},{cx:162,cy:54,r:46},{cx:92,cy:72,r:35}],
-            tw:220, th:118,
+            x: Math.random()*Math.max(1,GAME_W-maxCx*sc), y, sc,
+            circles: template,
         });
     }
 }
@@ -175,7 +191,7 @@ function generateClouds() {
 function generateFoxes() {
     foxLanes = [];
     // Spread fox lanes throughout the world, avoiding the very start and win zone
-    for (let y=WORLD_H*0.08; y<WORLD_H*0.92; y += 760+Math.random()*840) {
+    for (let y=WORLD_H*0.08; y<WORLD_H*0.92; y += 1520+Math.random()*1680) {
         foxLanes.push({
             worldY: y - FOX_H/2,         // centre the fox vertically on the lane
             x: -FOX_W - Math.random()*GAME_W, // staggered start off left edge
@@ -233,13 +249,19 @@ function drawBgCloud(c) {
     if (!furImg) return;
     ctx.save();
     ctx.translate(c.x,c.y); ctx.scale(c.sc,c.sc);
-    const bottomY=Math.max(...c.circles.map(o=>o.cy));
+    // Full bounding box of all circles (fixes top cutoff when circles extend above y=0)
+    const minX=Math.min(...c.circles.map(o=>o.cx-o.r));
+    const minY=Math.min(...c.circles.map(o=>o.cy-o.r));
+    const maxX=Math.max(...c.circles.map(o=>o.cx+o.r));
+    const maxY=Math.max(...c.circles.map(o=>o.cy+o.r));
+    const bw=maxX-minX, bh=maxY-minY;
     ctx.beginPath();
     c.circles.forEach(o=>ctx.arc(o.cx,o.cy,o.r,0,Math.PI*2));
-    ctx.rect(0,bottomY,c.tw,c.th-bottomY+4);
+    // Fill flat bottom to ground the cloud shape
+    ctx.rect(minX,Math.max(...c.circles.map(o=>o.cy)),bw,maxY-Math.max(...c.circles.map(o=>o.cy))+2);
     ctx.save(); ctx.clip();
-    ctx.drawImage(furImg,0,0,c.tw,c.th);
-    ctx.fillStyle='rgba(255,255,255,0.52)'; ctx.fillRect(0,0,c.tw,c.th);
+    ctx.drawImage(furImg,minX,minY,bw,bh);
+    ctx.fillStyle='rgba(255,255,255,0.52)'; ctx.fillRect(minX,minY,bw,bh);
     ctx.restore(); ctx.restore();
 }
 
@@ -443,7 +465,7 @@ function render() {
     ctx.translate(GAME_X,-camTop);
 
     (bgClouds||[]).forEach(c=>{
-        if (c.y+c.th*c.sc>camTop-20&&c.y<camTop+H+20) drawBgCloud(c);
+        if (c.y+200*c.sc>camTop-20&&c.y<camTop+H+20) drawBgCloud(c);
     });
     drawWinZone();
     (foxLanes||[]).forEach(fox=>{
