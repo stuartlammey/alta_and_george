@@ -319,14 +319,17 @@ function drawBgCloud(c) {
     const minY=Math.min(...c.circles.map(o=>o.cy-o.r));
     const maxX=Math.max(...c.circles.map(o=>o.cx+o.r));
     const maxY=Math.max(...c.circles.map(o=>o.cy+o.r));
-    const minCy=Math.min(...c.circles.map(o=>o.cy));
+    const minCy =Math.min(...c.circles.map(o=>o.cy));
+    const coreLX=Math.min(...c.circles.map(o=>o.cx));
+    const coreRX=Math.max(...c.circles.map(o=>o.cx));
     const bw=maxX-minX, bh=maxY-minY;
     ctx.beginPath();
     // moveTo before each arc keeps circles as independent subpaths,
     // preventing auto-connecting lines that create gaps in the clip region
     c.circles.forEach(o=>{ ctx.moveTo(o.cx+o.r,o.cy); ctx.arc(o.cx,o.cy,o.r,0,Math.PI*2); });
-    // Solid core from the highest circle centre down — fills all interior voids
-    ctx.rect(minX, minCy, bw, maxY-minCy+2);
+    // Core rect spans only between circle CENTRES — fills interior gaps without
+    // overriding the natural circular silhouette at the left and right outer edges
+    ctx.rect(coreLX, minCy, coreRX-coreLX, maxY-minCy+2);
     ctx.save(); ctx.clip();
     ctx.drawImage(furImg,minX,minY,bw,bh);
     ctx.fillStyle='rgba(255,255,255,0.52)'; ctx.fillRect(minX,minY,bw,bh);
@@ -441,7 +444,7 @@ function drawBalloon(cx,cy,tiltRad) {
     });
 
     photoCircle(altaImg,   OX+79*S,  OY+208*S, 32*S, 1.6, 0.33);
-    photoCircle(georgeImg, OX+121*S, OY+210*S, 29*S, 1.6, 0.38);
+    photoCircle(georgeImg, OX+121*S, OY+210*S, 29*S, 1.6, 0.50);
     ctx.restore();
 }
 
