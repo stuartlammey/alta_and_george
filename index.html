@@ -485,12 +485,12 @@ function update() {
     // Fox hit stun — hold balloon still briefly, then release
     if (foxHitTimer > 0) { foxHitTimer--; return; }
 
-    vy += GRAVITY;
-    vx += Math.sin(tick*0.00045)*0.06;
-    vy += Math.sin(tick*0.00058+1.2)*0.07;
+    const boost = boostActive ? 1.5 : 1;
+    vy += GRAVITY * (boostActive ? 0.78 : 1);   // balloon feels lighter after nappy drop
+    vx += Math.sin(tick*0.00045)*0.06 * boost;
+    vy += Math.sin(tick*0.00058+1.2)*0.07 * boost;
 
     // Repulsion — convert screen mouse to game-local coords, then world Y
-    const boost = boostActive ? 1.5 : 1;
     const gameMx = mx - GAME_X;   // screen X → game X
     const worldMy = my + camTop;  // screen Y → world Y
     const dx = bx-gameMx, dy = by-worldMy;
