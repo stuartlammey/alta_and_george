@@ -242,9 +242,13 @@ function generateClouds() {
     for (let y=50; y<WORLD_H; y += 160+Math.random()*260) {
         const template = CLOUD_TEMPLATES[Math.floor(Math.random()*CLOUD_TEMPLATES.length)];
         const sc = 0.7+Math.random()*1.1;
+        const minCx = Math.min(...template.map(c=>c.cx-c.r));
         const maxCx = Math.max(...template.map(c=>c.cx+c.r));
+        // xMin ensures left edge of any circle stays at or right of x=0
+        const xMin = Math.max(0, -minCx * sc);
+        const xMax = Math.max(xMin+1, GAME_W - maxCx * sc);
         bgClouds.push({
-            x: Math.random()*Math.max(1,GAME_W-maxCx*sc), y, sc,
+            x: xMin + Math.random()*(xMax-xMin), y, sc,
             circles: template,
         });
     }
@@ -437,7 +441,7 @@ function drawBalloon(cx,cy,tiltRad) {
     });
 
     photoCircle(altaImg,   OX+79*S,  OY+208*S, 32*S, 1.6, 0.33);
-    photoCircle(georgeImg, OX+121*S, OY+210*S, 29*S, 1.6, 0.45);
+    photoCircle(georgeImg, OX+121*S, OY+210*S, 29*S, 1.6, 0.38);
     ctx.restore();
 }
 
@@ -535,9 +539,10 @@ function update() {
     // Drift clouds with the same wind; wrap when they leave the game area
     (bgClouds||[]).forEach(c => {
         c.x += windV;
-        const cw = Math.max(...c.circles.map(o=>(o.cx+o.r))) * c.sc;
-        if (c.x > GAME_W + cw)  c.x -= GAME_W + cw * 2;
-        if (c.x + cw < 0)       c.x += GAME_W + cw * 2;
+        const minCx = Math.min(...c.circles.map(o=>(o.cx-o.r))) * c.sc;
+        const maxCx = Math.max(...c.circles.map(o=>(o.cx+o.r))) * c.sc;
+        if (c.x + minCx > GAME_W)  c.x -= GAME_W + (maxCx - minCx);
+        if (c.x + maxCx < 0)       c.x += GAME_W + (maxCx - minCx);
     });
 
     // First-fox-seen banner
