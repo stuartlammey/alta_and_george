@@ -135,9 +135,9 @@ const SUPABASE_ANON = 'sb_publishable_VjECbpH9j-C1Iu9hG73Gpw_TYtI-KBx';
 const WORLD_H    = 6000;
 const WIN_Y      = 280;
 const GRAVITY    = 0.1125;
-const REP_RAD    = 300;
+const REP_RAD    = 420;
 const REP_FORCE  = 8000;
-const DAMPING    = 0.87;
+const DAMPING    = 0.93;
 const BOUNCE_E   = 0.42;
 const S          = 0.75;                    // balloon draw scale (SVG 200×280)
 const OX         = -100 * S;               // −75
@@ -486,8 +486,8 @@ function update() {
     if (foxHitTimer > 0) { foxHitTimer--; return; }
 
     vy += GRAVITY;
-    vx += Math.sin(tick*0.00085)*0.06;
-    vy += Math.sin(tick*0.00110+1.2)*0.07;
+    vx += Math.sin(tick*0.00045)*0.06;
+    vy += Math.sin(tick*0.00058+1.2)*0.07;
 
     // Repulsion — convert screen mouse to game-local coords, then world Y
     const boost = boostActive ? 1.5 : 1;
@@ -518,6 +518,8 @@ function update() {
     if (nappyBannerTimer > 0) nappyBannerTimer--;
 
     vx*=DAMPING; vy*=DAMPING;
+    if (Math.abs(vx)>5) vx=5*Math.sign(vx);
+    if (Math.abs(vy)>5) vy=5*Math.sign(vy);
     bx+=vx; by+=vy;
 
     // Soft wall — gradual repulsion starts 70 px from each edge
