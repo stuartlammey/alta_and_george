@@ -134,7 +134,7 @@ const SUPABASE_ANON = 'sb_publishable_VjECbpH9j-C1Iu9hG73Gpw_TYtI-KBx';
 // ════════════════════════ WORLD CONSTANTS ════════════════════════
 const WORLD_H    = 6000;
 const WIN_Y      = 280;
-const GRAVITY    = 0.09;
+const GRAVITY    = 0.1125;
 const REP_RAD    = 300;
 const REP_FORCE  = 8000;
 const DAMPING    = 0.87;
@@ -507,11 +507,11 @@ function update() {
     // Nappy drop at halfway — jettison dead weight, unlock 50% boost
     if (!nappyDropped && by < WORLD_H / 2) {
         nappyDropped = true; nappyActive = true; boostActive = true;
-        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 0.5;
+        nappyX = bx; nappyWorldY = by + BSKT_BOT + 10; nappyVy = 0.2;
         nappyBannerTimer = 180;
     }
     if (nappyActive) {
-        nappyVy += 0.11;
+        nappyVy += 0.05;
         nappyWorldY += nappyVy;
         if (nappyWorldY > camTop + H + 120) nappyActive = false;
     }
