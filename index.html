@@ -295,7 +295,7 @@ function drawFurShape(circles, cx, cy) {
     const fw=maxX-minX, fh=maxY-minY;
     ctx.save(); ctx.translate(cx,cy);
     ctx.beginPath();
-    circles.forEach(c=>ctx.arc(c.cx,c.cy,c.r,0,Math.PI*2));
+    circles.forEach(c=>{ ctx.moveTo(c.cx+c.r,c.cy); ctx.arc(c.cx,c.cy,c.r,0,Math.PI*2); });
     ctx.save(); ctx.clip();
     ctx.drawImage(furImg,minX,minY,fw,fh);
     ctx.fillStyle='rgba(255,255,255,0.48)'; ctx.fillRect(minX,minY,fw,fh);
@@ -311,16 +311,18 @@ function drawBgCloud(c) {
     if (!furImg) return;
     ctx.save();
     ctx.translate(c.x,c.y); ctx.scale(c.sc,c.sc);
-    // Full bounding box of all circles (fixes top cutoff when circles extend above y=0)
     const minX=Math.min(...c.circles.map(o=>o.cx-o.r));
     const minY=Math.min(...c.circles.map(o=>o.cy-o.r));
     const maxX=Math.max(...c.circles.map(o=>o.cx+o.r));
     const maxY=Math.max(...c.circles.map(o=>o.cy+o.r));
+    const minCy=Math.min(...c.circles.map(o=>o.cy));
     const bw=maxX-minX, bh=maxY-minY;
     ctx.beginPath();
-    c.circles.forEach(o=>ctx.arc(o.cx,o.cy,o.r,0,Math.PI*2));
-    // Fill flat bottom to ground the cloud shape
-    ctx.rect(minX,Math.max(...c.circles.map(o=>o.cy)),bw,maxY-Math.max(...c.circles.map(o=>o.cy))+2);
+    // moveTo before each arc keeps circles as independent subpaths,
+    // preventing auto-connecting lines that create gaps in the clip region
+    c.circles.forEach(o=>{ ctx.moveTo(o.cx+o.r,o.cy); ctx.arc(o.cx,o.cy,o.r,0,Math.PI*2); });
+    // Solid core from the highest circle centre down — fills all interior voids
+    ctx.rect(minX, minCy, bw, maxY-minCy+2);
     ctx.save(); ctx.clip();
     ctx.drawImage(furImg,minX,minY,bw,bh);
     ctx.fillStyle='rgba(255,255,255,0.52)'; ctx.fillRect(minX,minY,bw,bh);
@@ -370,14 +372,14 @@ function envelopePath() {
     ctx.closePath();
 }
 
-function photoCircle(img,cx,cy,r,zoom=1) {
+function photoCircle(img,cx,cy,r,zoom=1,yBias=0.25) {
     if (!img) return;
     ctx.save();
     ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
-    // Square crop centred horizontally, biased upward for faces — preserves aspect ratio
+    // Square crop — yBias (0=top, 0.5=centre, 1=bottom) controls vertical position
     const size = Math.min(img.width, img.height) / zoom;
     const sx = (img.width  - size) / 2;
-    const sy = (img.height - size) / 4;
+    const sy = (img.height - size) * yBias;
     ctx.drawImage(img, sx, sy, size, size, cx-r, cy-r, r*2, r*2);
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
@@ -434,8 +436,8 @@ function drawBalloon(cx,cy,tiltRad) {
         ctx.beginPath(); ctx.moveTo(OX+x1*S,OY+y1*S); ctx.lineTo(OX+x2*S,OY+y2*S); ctx.stroke();
     });
 
-    photoCircle(altaImg,  OX+79*S, OY+208*S, 32*S, 1.6);
-    photoCircle(georgeImg,OX+121*S,OY+210*S, 29*S, 1.6);
+    photoCircle(altaImg,   OX+79*S,  OY+208*S, 32*S, 1.6, 0.33);
+    photoCircle(georgeImg, OX+121*S, OY+210*S, 29*S, 1.6, 0.45);
     ctx.restore();
 }
 
