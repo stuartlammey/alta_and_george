@@ -520,9 +520,15 @@ function update() {
     vx*=DAMPING; vy*=DAMPING;
     bx+=vx; by+=vy;
 
-    // Horizontal bounce off sides
-    if (bx-ENV_HW < 0)       { bx=ENV_HW;        vx= Math.abs(vx)*BOUNCE_E; }
-    if (bx+ENV_HW > GAME_W)  { bx=GAME_W-ENV_HW; vx=-Math.abs(vx)*BOUNCE_E; }
+    // Soft wall — gradual repulsion starts 70 px from each edge
+    const wallZone = 70;
+    const leftGap  = bx - ENV_HW;
+    const rightGap = GAME_W - (bx + ENV_HW);
+    if (leftGap  < wallZone) vx += 0.5 * (1 - leftGap  / wallZone);
+    if (rightGap < wallZone) vx -= 0.5 * (1 - rightGap / wallZone);
+    // Hard boundary backstop — guaranteed minimum kick so balloon never sticks
+    if (bx-ENV_HW < 0)       { bx=ENV_HW;        vx= Math.max(Math.abs(vx)*BOUNCE_E, 1.5); }
+    if (bx+ENV_HW > GAME_W)  { bx=GAME_W-ENV_HW; vx=-Math.max(Math.abs(vx)*BOUNCE_E, 1.5); }
 
     // Soft floor
     const floor=WORLD_H-80;
