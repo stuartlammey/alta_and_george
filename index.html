@@ -102,8 +102,7 @@
     <div id="start-screen" class="screen">
         <h1>Alta &amp; George: Skyward</h1>
         <p>Guide the balloon to the top of the sky!</p>
-        <p>Move your cursor near the balloon to push it — position below to float upward.</p>
-        <p>Watch out for foxes! 🦊 Hit one and you fall back to the bottom.</p>
+        <p>Move your finger near the balloon to push it — position below to float upward.</p>
         <button class="btn" id="start-btn">Launch! 🎈</button>
     </div>
 
@@ -157,6 +156,14 @@ const BONE_CIRCLES = [
     {cx:-30,cy:0,r:16},{cx:0,cy:0,r:16},{cx:30,cy:0,r:16},
     {cx:72,cy:-13,r:24},{cx:72,cy:13,r:24},
 ];
+
+// Stars — fixed positions, drawn in screen coords, fade in as balloon approaches top
+const STARS = Array.from({length: 60}, () => ({
+    x: Math.random(),                      // fraction of GAME_W
+    y: Math.random() * 0.78,              // upper 78% of screen height
+    r: 0.5 + Math.random() * 1.5,
+    t: Math.random() * Math.PI * 2,       // twinkle phase offset
+}));
 
 // ════════════════════════ CANVAS + GAME AREA ════════════════════════
 const canvas = document.getElementById('gc');
@@ -239,18 +246,23 @@ const CLOUD_TEMPLATES = [
 
 function generateClouds() {
     bgClouds = [];
+    let idx = 0;
     for (let y=50; y<WORLD_H; y += 160+Math.random()*260) {
         const template = CLOUD_TEMPLATES[Math.floor(Math.random()*CLOUD_TEMPLATES.length)];
         const sc = 0.7+Math.random()*1.1;
         const minCx = Math.min(...template.map(c=>c.cx-c.r));
         const maxCx = Math.max(...template.map(c=>c.cx+c.r));
-        // xMin ensures left edge of any circle stays at or right of x=0
         const xMin = Math.max(0, -minCx * sc);
         const xMax = Math.max(xMin+1, GAME_W - maxCx * sc);
+        // Rotate through left / centre / right thirds + small jitter
+        // so consecutive clouds are always horizontally staggered
+        const zone = (idx % 3) / 3;
+        const frac = Math.max(0, Math.min(1, zone + (Math.random()-0.5)*0.22));
         bgClouds.push({
-            x: xMin + Math.random()*(xMax-xMin), y, sc,
+            x: xMin + frac*(xMax-xMin), y, sc,
             circles: template,
         });
+        idx++;
     }
 }
 
@@ -486,7 +498,7 @@ function update() {
     if (foxHitTimer > 0) { foxHitTimer--; return; }
 
     const boost = boostActive ? 1.5 : 1;
-    vy += GRAVITY * (boostActive ? 0.78 : 1);   // balloon feels lighter after nappy drop
+    vy += GRAVITY * (boostActive ? -0.4 : 1);   // balloon floats upward by default after nappy drop
     vx += Math.sin(tick*0.00045)*0.06 * boost;
     vy += Math.sin(tick*0.00058+1.2)*0.07 * boost;
 
@@ -595,6 +607,27 @@ function render() {
     ctx.clearRect(0,0,W,H);
     drawBackground();
 
+    // Night sky + stars — fade in as balloon climbs above 50% of the world
+    const prog = Math.max(0, Math.min(1, (WORLD_H-by) / (WORLD_H-WIN_Y)));
+    if (prog > 0.5) {
+        const t = Math.min(1, (prog - 0.5) / 0.4);  // 0→1 over the top half
+        // Darken the game strip progressively
+        ctx.save();
+        ctx.fillStyle = `rgba(4,8,28,${(t * 0.55).toFixed(3)})`;
+        ctx.fillRect(GAME_X, 0, GAME_W, H);
+        // Draw stars inside game strip only
+        ctx.beginPath(); ctx.rect(GAME_X, 0, GAME_W, H); ctx.clip();
+        ctx.fillStyle = '#ffffff';
+        STARS.forEach(s => {
+            const twinkle = 0.55 + 0.45 * Math.sin(tick * 0.038 + s.t);
+            ctx.globalAlpha = t * twinkle;
+            ctx.beginPath();
+            ctx.arc(GAME_X + s.x * GAME_W, s.y * H, s.r, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.restore();
+    }
+
     // Clip to portrait game strip and apply camera
     ctx.save();
     ctx.beginPath(); ctx.rect(GAME_X,0,GAME_W,H); ctx.clip();
@@ -633,7 +666,7 @@ function render() {
         ctx.fillText('💩  Nappy overboard!', GAME_X + GAME_W / 2, H * 0.4);
         ctx.font = `italic ${Math.round(H * 0.042)}px Georgia`;
         ctx.fillStyle = '#FFD93D';
-        ctx.fillText('50% boost unlocked 🚀', GAME_X + GAME_W / 2, H * 0.46);
+        ctx.fillText('The balloon is lighter! 🎈', GAME_X + GAME_W / 2, H * 0.46);
         ctx.restore();
     }
 
