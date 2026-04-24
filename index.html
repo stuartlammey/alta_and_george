@@ -609,8 +609,8 @@ function render() {
 
     // Night sky + stars — fade in as balloon climbs above 50% of the world
     const prog = Math.max(0, Math.min(1, (WORLD_H-by) / (WORLD_H-WIN_Y)));
-    if (prog > 0.5) {
-        const t = Math.min(1, (prog - 0.5) / 0.4);  // 0→1 over the top half
+    if (prog > 0.75) {
+        const t = Math.min(1, (prog - 0.75) / 0.25);  // 0→1 over the top quarter
         // Darken the game strip progressively
         ctx.save();
         ctx.fillStyle = `rgba(4,8,28,${(t * 0.55).toFixed(3)})`;
